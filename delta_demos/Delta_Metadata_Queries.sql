@@ -19,6 +19,21 @@ show tables -- simply list tables
 
 -- COMMAND ----------
 
+create table if not exists test_dataset (
+id integer, 
+text string
+)
+
+-- COMMAND ----------
+
+insert into test_dataset values(1, "row one");
+insert into test_dataset values(2, "row two");
+insert into test_dataset values(3, "row three");
+insert into test_dataset values(4, "row four");
+insert into test_dataset values(5, "row five");
+
+-- COMMAND ----------
+
 describe test_dataset
 
 -- COMMAND ----------
@@ -40,11 +55,6 @@ describe history test_dataset
 -- MAGIC     for column in spark.catalog.listColumns(table.name): # list all columns in current table
 -- MAGIC         if column.name == 'text': # provide column name here
 -- MAGIC             print('Found column {} in table {}'.format(column.name, table.name))
-
--- COMMAND ----------
-
--- MAGIC %python
--- MAGIC spark.catalog.
 
 -- COMMAND ----------
 
