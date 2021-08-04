@@ -52,11 +52,6 @@ options = {
 
 # COMMAND ----------
 
-# Let's set the default database name so we don't have to specify it on every query
-spark.sql(f"USE {database_name}")
-
-# COMMAND ----------
-
 # Read the data written by the previous cell back.
 df = (spark.read
   .format("snowflake")
@@ -437,7 +432,7 @@ df.write.mode("overwrite").option("overwriteSchema", True).format("delta").saveA
 # COMMAND ----------
 
 # Here we prepare the data so the model can use it
-# This is just a subset of the code we saw earlier when we developed the model
+# This is just a subset of the code we saw earlier when we trained the model
 
 # First we read in the raw data
 df_client_raw_data = spark.sql("""
@@ -450,37 +445,6 @@ df_client_raw_data = spark.sql("""
   FROM rac_mlflow_current_readings_labeled  
 """)
     
-# Create a numerical index of device_type values (it's a category, but Decision Trees don't need OneHotEncoding)
-device_type_indexer = StringIndexer(inputCol="device_type", outputCol="device_type_index")
-df_client_raw_data = device_type_indexer.fit(df_client_raw_data).transform(df_client_raw_data)
-
-# Create a numerical index of device_id values (it's a category, but Decision Trees don't need OneHotEncoding)
-device_id_indexer = StringIndexer(inputCol="device_id", outputCol="device_id_index")
-df_client_raw_data = device_id_indexer.fit(df_client_raw_data).transform(df_client_raw_data)
-
-# Populated df_raw_data with the all-numeric values
-df_client_raw_data.createOrReplaceTempView("vw_client_raw_data")
-df_client_raw_data = spark.sql("""
-SELECT 
-  device_type,
-  device_type_index,
-  device_id,
-  device_id_index,
-  reading_1,
-  reading_2,
-  reading_3
-FROM vw_client_raw_data 
-""")
-
-# Assemble the data into label and features columns
-
-assembler = VectorAssembler( 
-inputCols=["device_type_index", "device_id_index", "reading_1", "reading_2", "reading_3"], 
-outputCol="features")
-
-df_client_raw_data = assembler.transform(df_client_raw_data)
-
-display(df_client_raw_data)
 
 # COMMAND ----------
 
@@ -591,7 +555,7 @@ df = spark.sql("SELECT * FROM rac_mlflow_snowflake_application_output")
 # MAGIC  
 # MAGIC  1. We loaded two datasets, one for training and one for "deployment" from snowflake into Databricks.
 # MAGIC    - All intermediate datasets for data preparation and ETL were stored as Delta and registered in the Hive view allowing for greater performance. 
-# MAGIC  1. We trained a model using MLflow, and we learned a lot about MLflow Tracking in this module.  We tracked: 
+# MAGIC  1. We trained a model using MLflow and cross validation, and we learned a lot about MLflow Tracking in this module.  We tracked: 
 # MAGIC    - Parameters
 # MAGIC    - Metrics
 # MAGIC    - Tags
