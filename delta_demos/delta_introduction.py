@@ -368,7 +368,7 @@ dbutils.fs.ls(f"dbfs:/user/hive/warehouse/{database_name}.db/sensor_readings_his
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC optimize sensor_readings_historical_silver
+# MAGIC optimize sensor_readings_historical_silver 
 
 # COMMAND ----------
 
