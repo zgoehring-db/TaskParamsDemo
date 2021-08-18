@@ -34,9 +34,6 @@
 # MAGIC **Model packaging** - a machine learning model trained using features from Databricks feature store retains references to these features. At inference time the model can optionally retrieve feature values from the store. The caller only needs to provide the primary key of the features used in the model and the model will retrieve all features required. This is done with `FeatureStoreClient.log_model()`.   
 # MAGIC 
 # MAGIC 
-# MAGIC ### Workflow 
-# MAGIC 
-# MAGIC <img src="https://docs.databricks.com/_static/images/machine-learning/feature-store/taxi_example_flow_v3.png"/img>
 # MAGIC 
 # MAGIC #### Notes
 # MAGIC - Must use Databricks Runtime 8.3 ML or above
@@ -52,7 +49,7 @@ spark.sql("USE {}".format(dbutils.widgets.get("DatabaseName")))
 # DBTITLE 1,Read data
 from pyspark.sql.types import DoubleType, StringType, StructType, StructField
 from pyspark.sql.functions import monotonically_increasing_id
-from pyspark.ml.feature import Imputer, OneHotEncoder, StringIndexer
+from pyspark.ml.feature import Imputer, StringIndexer
 from databricks import feature_store
 
 
@@ -125,7 +122,11 @@ display(df)
 
 # COMMAND ----------
 
-df.write.format("delta").saveAsTable("CensusIncomeDataset")
+df.write.format("delta").mode("overwrite").saveAsTable("CensusIncomeDataset")
+
+# COMMAND ----------
+
+df = spark.sql("select * from CensusIncomeDataset")
 
 # COMMAND ----------
 
@@ -146,7 +147,7 @@ fs.create_feature_table(
 fs.write_table(
   df=df,
   name="{}.census_data_features".format(dbutils.widgets.get("DatabaseName")),
-  mode='merge'
+  mode='overwrite'
 )
 
 # COMMAND ----------
