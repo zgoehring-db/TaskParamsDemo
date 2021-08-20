@@ -44,12 +44,20 @@
 
 # COMMAND ----------
 
+dbutils.widgets.text("DatabaseName", "rac_demo_db")
+database_name = dbutils.widgets.get("DatabaseName")
+spark.sql("CREATE DATABASE IF NOT EXISTS {}".format(database_name))
+spark.sql("USE {}".format(database_name))
+
+# COMMAND ----------
+
+dbutils.fs.mkdirs("/Users/ryan.chynoweth@databricks.com/databricks_ml/rac_customer_churn")
+
+# COMMAND ----------
+
 import mlflow
+from mlflow import spark as mlflow_spark # renamed to prevent collisions when doing spark.sql
 
-# Use MLflow to track experiments
-mlflow.set_experiment("/Users/rafi.kurlansik@databricks.com/databricks_automl/210504-churn_take_2-iw6ph1kc")
-
-input_path = "/dbfs/rafi.kurlansik@databricks.com/automl/21-05-04 02:36/37d8c518"
 target_col = "churn"
 
 # COMMAND ----------
@@ -61,7 +69,12 @@ target_col = "churn"
 
 # Load input data into a pandas DataFrame.
 import pandas as pd
-input_pdf = pd.read_parquet(input_path)
+from databricks import feature_store
+
+fs = feature_store.FeatureStoreClient()
+
+
+input_pdf = fs.read_table('{}.churn_features'.format(database_name)).toPandas()
 
 # Preview data
 input_pdf.head(5)
@@ -70,42 +83,11 @@ input_pdf.head(5)
 
 from sklearn.model_selection import train_test_split
 
-input_X = input_pdf.drop([target_col], axis=1)
+input_X = input_pdf.drop([target_col, "customerID"], axis=1)
 input_y = input_pdf[target_col]
 
 X_train, X_val, y_train, y_val = train_test_split(input_X, input_y, random_state=42, stratify=input_y)
 
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC %md
-# MAGIC ## Preprocessors
-
-# COMMAND ----------
-
-transformers = []
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### String Preprocessors
-# MAGIC #### Feature hashing
-# MAGIC Convert each string column into multiple numerical columns.
-# MAGIC For each input string column, the number of output columns is 4096.
-# MAGIC This is used for string columns with relatively many unique values.
-
-# COMMAND ----------
-
-from sklearn.feature_extraction import FeatureHasher
-
-for feature in ['customerID']:
-	transformers.append((f"{feature}_hasher", FeatureHasher(n_features=4096, input_type="string"), feature))
-
-# COMMAND ----------
-
-from sklearn.compose import ColumnTransformer
-
-preprocessor = ColumnTransformer(transformers, remainder="passthrough")
 
 # COMMAND ----------
 
@@ -128,15 +110,12 @@ import mlflow
 import sklearn
 from sklearn.pipeline import Pipeline
 
-sklr_classifier = LogisticRegression(
+model = LogisticRegression(
   C=0.03309776273903743,
   penalty="l2",
   random_state=43,
 )
 
-model = Pipeline([
-    ("preprocessor", preprocessor),    ("classifier", sklr_classifier),
-])
 
 # Enable automatic logging of input samples, metrics, parameters, and models
 mlflow.sklearn.autolog(log_input_examples=True)
@@ -225,3 +204,7 @@ except Exception as e:
 # MAGIC model = mlflow.pyfunc.load_model(model_uri=f"models:/{model_name}/{model_version}")
 # MAGIC model.predict(input_X)
 # MAGIC ```
+
+# COMMAND ----------
+
+

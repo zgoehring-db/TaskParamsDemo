@@ -28,6 +28,13 @@
 
 # COMMAND ----------
 
+dbutils.widgets.text("DatabaseName", "rac_demo_db")
+database_name = dbutils.widgets.get("DatabaseName")
+spark.sql("CREATE DATABASE IF NOT EXISTS {}".format(database_name))
+spark.sql("USE {}".format(database_name))
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC ### Featurization Logic
 # MAGIC 
@@ -36,7 +43,7 @@
 # COMMAND ----------
 
 # Read into Spark
-telcoDF = spark.table("ibm_telco_churn.bronze_customers")
+telcoDF = spark.table("bronze_customers")
 
 display(telcoDF)
 
@@ -90,15 +97,19 @@ from databricks.feature_store import FeatureStoreClient
 fs = FeatureStoreClient()
 
 churn_features_df = compute_churn_features(telcoDF)
+display(churn_features_df)
+
+# COMMAND ----------
+
 
 churn_feature_table = fs.create_feature_table(
-  name='ibm_telco_churn.churn_features',
+  name='{}.churn_features'.format(database_name),
   keys='customerID',
   schema=churn_features_df.spark.schema(),
   description='These features are derived from the ibm_telco_churn.bronze_customers table in the lakehouse.  I created dummy variables for the categorical columns, cleaned up their names, and added a boolean flag for whether the customer churned or not.  No aggregations were performed.'
 )
 
-fs.write_table(df=churn_features_df.to_spark(), name='ibm_telco_churn.churn_features', mode='overwrite')
+fs.write_table(df=churn_features_df.to_spark(), name='{}.churn_features'.format(database_name), mode='overwrite')
 
 # COMMAND ----------
 

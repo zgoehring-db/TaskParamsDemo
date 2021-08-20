@@ -28,6 +28,13 @@
 
 # COMMAND ----------
 
+dbutils.widgets.text("DatabaseName", "rac_demo_db")
+database_name = dbutils.widgets.get("DatabaseName")
+spark.sql("CREATE DATABASE IF NOT EXISTS {}".format(database_name))
+spark.sql("USE {}".format(database_name))
+
+# COMMAND ----------
+
 # MAGIC %sh
 # MAGIC wget https://raw.githubusercontent.com/IBM/telco-customer-churn-on-icp4d/master/data/Telco-Customer-Churn.csv
 
@@ -50,8 +57,7 @@ import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
 from pyspark.sql.functions import col, when
 from pyspark.sql.types import StructType,StructField,DoubleType, StringType, IntegerType, FloatType
 
-# Set config for database name, file paths, and table names
-database_name = 'ibm_telco_churn'
+
 
 # Move file from driver to DBFS
 user = dbutils.notebook.entry_point.getDbutils().notebook().getContext().tags().apply('user')
@@ -69,15 +75,14 @@ silver_tbl_name = 'silver_customers'
 automl_tbl_name = 'gold_customers'
 telco_preds_tbl_name = 'telco_preds'
 
-# Delete the old database and tables if needed
-_ = spark.sql('DROP DATABASE IF EXISTS {} CASCADE'.format(database_name))
 
-# Create database to house tables
-_ = spark.sql('CREATE DATABASE {}'.format(database_name))
-# Drop any old delta lake files if needed (e.g. re-running this notebook with the same bronze_tbl_path and silver_tbl_path)
-shutil.rmtree('/dbfs'+bronze_tbl_path, ignore_errors=True)
-shutil.rmtree('/dbfs'+silver_tbl_path, ignore_errors=True)
-shutil.rmtree('/dbfs'+telco_preds_path, ignore_errors=True)
+
+# COMMAND ----------
+
+spark.sql("DROP TABLE IF EXISTS {}".format(bronze_tbl_name))
+spark.sql("DROP TABLE IF EXISTS {}".format(silver_tbl_name))
+spark.sql("DROP TABLE IF EXISTS {}".format(automl_tbl_name))
+spark.sql("DROP TABLE IF EXISTS {}".format(telco_preds_tbl_name))
 
 # COMMAND ----------
 
