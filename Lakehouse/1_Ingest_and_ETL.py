@@ -264,11 +264,11 @@ spark.sql(
 # MAGIC -- The entire backfill batch will be treated as an atomic transaction,
 # MAGIC -- and we can do both inserts and updates within a single batch.
 # MAGIC 
-# MAGIC MERGE INTO sensor_readings_historical_silver AS target -- TO DO... "AS" what?
-# MAGIC USING historical_bronze_backfill_vw AS source -- TO DO... "AS" what?
+# MAGIC MERGE INTO sensor_readings_historical_silver AS target 
+# MAGIC USING historical_bronze_backfill_vw AS source 
 # MAGIC ON target.id = source.id
-# MAGIC WHEN MATCHED THEN UPDATE SET * -- TO DO... what?
-# MAGIC WHEN NOT MATCHED THEN INSERT * -- TO DO... what?
+# MAGIC WHEN MATCHED THEN UPDATE SET * 
+# MAGIC WHEN NOT MATCHED THEN INSERT * 
 
 # COMMAND ----------
 
@@ -394,7 +394,7 @@ spark.sql(
 # MAGIC 
 # MAGIC SELECT * 
 # MAGIC FROM sensor_readings_historical_silver 
-# MAGIC VERSION AS OF 1 -- TO DO... how can you specify the time travel?
+# MAGIC VERSION AS OF 1 
 # MAGIC WHERE reading_1 = 999.99
 
 # COMMAND ----------
