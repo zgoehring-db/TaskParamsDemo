@@ -1,23 +1,6 @@
 # Databricks notebook source
-# MAGIC %md ---
-# MAGIC title: End-to-End MLOps demo with MLFlow, Feature Store and Auto ML, part 0 - Setup
-# MAGIC authors:
-# MAGIC - Rafi Kurlansik
-# MAGIC tags:
-# MAGIC - python
-# MAGIC - telco
-# MAGIC - csv
-# MAGIC - delta
-# MAGIC created_at: 2021-05-01
-# MAGIC updated_at: 2021-05-01
-# MAGIC tldr: End-to-end demo of Databricks for MLOps, including MLflow, the registry, webhooks, scoring, feature store and auto ML. Part 0 - setup of data and Delta table
-# MAGIC ---
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC # Notebook Links
-# MAGIC - AWS demo.cloud: [https://demo.cloud.databricks.com/#notebook/10166850](https://demo.cloud.databricks.com/#notebook/10166850)
+# MAGIC %md 
+# MAGIC # Ingest data and Load into Delta
 
 # COMMAND ----------
 
@@ -28,7 +11,7 @@
 
 # COMMAND ----------
 
-dbutils.widgets.text("DatabaseName", "rac_demo_db")
+dbutils.widgets.text("DatabaseName", "")
 database_name = dbutils.widgets.get("DatabaseName")
 spark.sql("CREATE DATABASE IF NOT EXISTS {}".format(database_name))
 spark.sql("USE {}".format(database_name))

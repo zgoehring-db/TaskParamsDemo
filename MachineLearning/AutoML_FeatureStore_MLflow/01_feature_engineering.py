@@ -1,23 +1,8 @@
 # Databricks notebook source
-# MAGIC %md ---
-# MAGIC title: End-to-End MLOps demo with MLFlow, Feature Store and Auto ML, part 1 - Feature Engineering
-# MAGIC authors:
-# MAGIC - Rafi Kurlansik
-# MAGIC tags:
-# MAGIC - python
-# MAGIC - feature-engineering
-# MAGIC - koalas
-# MAGIC - feature-store
-# MAGIC created_at: 2021-05-01
-# MAGIC updated_at: 2021-05-01
-# MAGIC tldr: End-to-end demo of Databricks for MLOps, including MLflow, the registry, webhooks, scoring, feature store and auto ML. Part 0 - feature engineering, with koalas, and creating feature store tables
-# MAGIC ---
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC # Notebook Links
-# MAGIC - AWS demo.cloud: [https://demo.cloud.databricks.com/#notebook/10166861](https://demo.cloud.databricks.com/#notebook/10166861)
+# MAGIC %md 
+# MAGIC # Feature Engineering
+# MAGIC 
+# MAGIC From Delta table to Feature Table
 
 # COMMAND ----------
 
