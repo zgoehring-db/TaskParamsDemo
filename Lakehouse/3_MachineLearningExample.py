@@ -17,6 +17,11 @@ spark.sql("USE {}".format(database_name))
 
 # COMMAND ----------
 
+# MAGIC %sh
+# MAGIC pip install --upgrade mlflow
+
+# COMMAND ----------
+
 setup_responses = dbutils.notebook.run("./includes/3_setup", 0, {"database_name": database_name, "user_name": user_name}).split()
 
 local_data_path = setup_responses[0]
@@ -145,203 +150,113 @@ import time
 
 # COMMAND ----------
 
-# Call this function to train and test the Decision Tree model
-# We put this code into a function so you can easily create multiple runs by calling it with different parameters
-# It uses MLflow to track runs
-# Remember to run this cell before calling it.  You must also run this cell every time you change something in it.  Otherwise, your changes will not be "seen."
+# We will create a training function that accepts a max depth parameter
+# this will allow us to do a small hyper parameter tuning example
 
-def training_run(p_max_depth = 2, p_owner = "default") :
-  with mlflow.start_run() as run:
-    
-    # Start a timer to get overall elapsed time for this function
-    overall_start_time = time.time()
-    
-    # Log a Tag for the run
-    mlflow.set_tag("Owner", "p_owner")
-    
-    # Log the p_max_depth parameter in MLflow
-    mlflow.log_param("Maximum Depth", p_max_depth)
-    
-    # STEP 1: Read in the raw data to use for training
-    # We'll use an MLflow metric to log the time taken in each step 
-    start_time = time.time()
-    
-    df_raw_data = spark.sql("""
-      SELECT 
-        device_type,
-        device_operational_status AS label,
-        device_id,
-        reading_1,
-        reading_2,
-        reading_3
-      FROM current_readings_labeled
-    """)
-    
-    # We'll use an MLflow metric to log the time taken in each step 
-    end_time = time.time()
-    elapsed_time = end_time - start_time
 
-    # NOTE: this will be a multi-step metric that shows the elapsed time for each step in this function.
-    mlflow.log_metric("Step Elapsed Time", elapsed_time)
-    
-    # STEP 2: Index the Categorical data so the Decision Tree can use it
-    # We'll use an MLflow metric to log the time taken in each step 
-    start_time = time.time()
-    
-    # Create a numerical index of device_type values (it's a category, but Decision Trees don't need OneHotEncoding)
-    device_type_indexer = StringIndexer(inputCol="device_type", outputCol="device_type_index")
-    df_raw_data = device_type_indexer.fit(df_raw_data).transform(df_raw_data)
+with mlflow.start_run() as run:
 
-    # Create a numerical index of device_id values (it's a category, but Decision Trees don't need OneHotEncoding)
-    device_id_indexer = StringIndexer(inputCol="device_id", outputCol="device_id_index")
-    df_raw_data = device_id_indexer.fit(df_raw_data).transform(df_raw_data)
+  # Start a timer to get overall elapsed time for this function
+  overall_start_time = time.time()
 
-    # Create a numerical index of label values (device status) 
-    label_indexer = StringIndexer(inputCol="label", outputCol="label_index")
-    df_raw_data = label_indexer.fit(df_raw_data).transform(df_raw_data)
-    
-    # We'll use an MLflow metric to log the time taken in each step 
-    end_time = time.time()
-    elapsed_time = end_time - start_time
-    
-    # use the mlflow API to log a Metric named "Step Elapsed Time" and set the value to the elapsed_time calculated above
-    mlflow.log_metric("Step Elapsed Time", elapsed_time)
-    
+  # Log a Tag for the run
+  mlflow.set_tag("Owner", "ryan.chynoweth@databricks.com")
 
-    # STEP 3: create a dataframe with the indexed data ready to be assembled
-    # We'll use an MLflow metric to log the time taken in each step 
-    
-    # We'll use an MLflow metric to log the time taken in each step 
-    start_time = time.time()
-    
-    # Populated df_raw_data with the all-numeric values
-    df_raw_data.createOrReplaceTempView("vw_raw_data")
-    df_raw_data = spark.sql("""
+
+  ## STEP 1: Read in the raw data to use for training
+  # We'll use an MLflow metric to log the time taken in each step 
+  start_time = time.time()
+
+  df_raw_data = spark.sql("""
     SELECT 
-      label_index AS label, 
-      device_type_index AS device_type,
-      device_id_index AS device_id,
+      device_type,
+      device_operational_status AS label,
+      device_id,
       reading_1,
       reading_2,
       reading_3
-    FROM vw_raw_data
-    """)
-    
-    # We'll use an MLflow metric to log the time taken in each step 
-    end_time = time.time()
-    elapsed_time = end_time - start_time
+    FROM rac_mlflow_current_readings_labeled
+  """)
 
-    # NOTE: this will be a multi-step metric that shows the elapsed time for each step in this function.
-    #       Set this call to be step 3
-    mlflow.log_metric("Step Elapsed Time", elapsed_time)
-    
-    # STEP 4: Assemble the data into label and features columns
-    
-    # We'll use an MLflow metric to log the time taken in each step 
-    start_time = time.time()
-    
-    assembler = VectorAssembler( 
-    inputCols=["device_type", "device_id", "reading_1", "reading_2", "reading_3"], 
-    outputCol="features")
+  # STEP 2: Index the Categorical data so the Decision Tree can use it
 
-    df_assembled_data = assembler.transform(df_raw_data).select("label", "features")
-    
-    # We'll use an MLflow metric to log the time taken in each step 
-    end_time = time.time()
-    elapsed_time = end_time - start_time
-    
-    # NOTE: this will be a multi-step metric that shows the elapsed time for each step in this function.
-    #       Set this call to be step 4
-    mlflow.log_metric("Step Elapsed Time", elapsed_time)
-    
-    # STEP 5: Randomly split data into training and test sets. Set seed for reproducibility
-    
-    # We'll use an MLflow metric to log the time taken in each step 
-    start_time = time.time()
-    
-    (training_data, test_data) = df_assembled_data.randomSplit([0.7, 0.3], seed=100)
-    
-    # Log the size of the training and test data
-    # NOTE: these metrics only occur once... they are not series
-    mlflow.log_metric("Training Data Rows", training_data.count())
-    mlflow.log_metric("Training Data Rows", test_data.count())
-    
-    # We'll use an MLflow metric to log the time taken in each step 
-    end_time = time.time()
-    elapsed_time = end_time - start_time
-    
-    # NOTE: this will be a multi-step metric that shows the elapsed time for each step in this function.
-    #       Set this call to be step 5
-    mlflow.log_metric("Step Elapsed Time", elapsed_time)
+  # Create a numerical index of device_type values (it's a category, but Decision Trees don't need OneHotEncoding)
+  device_type_indexer = StringIndexer(inputCol="device_type", outputCol="device_type_index")
+
+  # Create a numerical index of device_id values (it's a category, but Decision Trees don't need OneHotEncoding)
+  device_id_indexer = StringIndexer(inputCol="device_id", outputCol="device_id_index")
+
+  # Create a numerical index of label values (device status) 
+  label_indexer = StringIndexer(inputCol="label", outputCol="label_index")
 
 
-    # STEP 6: Train the model
-    
-    # We'll use an MLflow metric to log the time taken in each step 
-    start_time = time.time()
-    
-    # Select the Decision Tree model type, and set its parameters
-    dtClassifier = DecisionTreeClassifier(labelCol="label", featuresCol="features")
-    dtClassifier.setMaxDepth(p_max_depth)
-    dtClassifier.setMaxBins(20) # This is how Spark decides if a feature is categorical or continuous
+  assembler = VectorAssembler( 
+  inputCols=["device_type_index", "device_id_index", "reading_1", "reading_2", "reading_3"], 
+  outputCol="features")
 
-    # Train the model
-    model = dtClassifier.fit(training_data)
-    
-    # We'll use an MLflow metric to log the time taken in each step 
-    end_time = time.time()
-    elapsed_time = end_time - start_time
-    #
-    # TO DO... use the mlflow API to log a Metric named "Step Elapsed Time" and set the value to the elapsed_time calculated above
-    # NOTE: this will be a multi-step metric that shows the elapsed time for each step in this function.
-    #       Set this call to be step 6
-    mlflow.log_metric("Step Elapsed Time", elapsed_time)
+  # STEP 3: Randomly split data into training and test sets. Set seed for reproducibility
 
-    # STEP 7: Test the model
-    
-    # We'll use an MLflow metric to log the time taken in each step 
-    start_time = time.time()
-    
-    df_predictions = model.transform(test_data)
-    
-    # We'll use an MLflow metric to log the time taken in each step 
-    end_time = time.time()
-    elapsed_time = end_time - start_time
-    #
-    # TO DO... use the mlflow API to log a Metric named "Step Elapsed Time" and set the value to the elapsed_time calculated above
-    # NOTE: this will be a multi-step metric that shows the elapsed time for each step in this function.
-    #       Set this call to be step 7
-    mlflow.log_metric("Step Elapsed Time", elapsed_time)
+  (training_data, test_data) = df_raw_data.randomSplit([0.7, 0.3], seed=100)
 
-    # STEP 8: Determine the model's accuracy
-    
-     # We'll use an MLflow metric to log the time taken in each step 
-    start_time = time.time()
-    
-    evaluator = MulticlassClassificationEvaluator(
-    labelCol="label", predictionCol="prediction")
-    accuracy = evaluator.evaluate(df_predictions, {evaluator.metricName: "accuracy"})
-    
-    # Log the model's accuracy in MLflow
-    mlflow.log_metric("Accuracy", accuracy)
-    
-    # Log the model's feature importances in MLflow
-    mlflow.log_param("Feature Importances", str(model.featureImportances))
-    
-    # We'll use an MLflow metric to log the time taken in each step 
-    end_time = time.time()
-    elapsed_time = end_time - start_time
-    mlflow.log_metric("Step Elapsed Time", elapsed_time)
-    
-    # We'll also use an MLflow metric to log overall time
-    overall_end_time = time.time()
-    overall_elapsed_time = overall_end_time - overall_start_time
-    mlflow.log_metric("Overall Elapsed Time", overall_elapsed_time)
-    
-    # Log the model itself
-    mlflow_spark.log_model(model, "spark-model")
-    
-    return run.info.run_uuid
+  # Log the size of the training and test data
+  # NOTE: these metrics only occur once... they are not series
+  mlflow.log_metric("Training Data Rows", training_data.count())
+  mlflow.log_metric("Test Data Rows", test_data.count())
+
+
+  ######
+  ## Step 4: Set up pipeline object
+  ######
+  dtClassifier = DecisionTreeClassifier(labelCol="label_index", featuresCol="features")
+
+  pipeline = Pipeline(stages=[
+    device_type_indexer, 
+    device_id_indexer, 
+    label_indexer, 
+    assembler, 
+    dtClassifier
+  ])
+  
+  # we will just search one parameter for time savings
+  grid = (ParamGridBuilder()
+           .addGrid(dtClassifier.maxDepth, [2,3,4,5,6,7,8,9,10])
+           .build()
+         )
+
+
+
+
+  ########################
+  # STEP 5: TRAIN MODEL
+  ########################
+  
+  evaluator = MulticlassClassificationEvaluator(
+    labelCol="label_index", predictionCol="prediction", metricName="accuracy")
+
+  cvModel = CrossValidator(estimator=pipeline, evaluator=evaluator, estimatorParamMaps=grid, numFolds=3)
+
+  fittedCvModel = cvModel.fit(training_data)
+  
+
+  # STEP 6: Test the model
+  
+  bestModel = fittedCvModel.bestModel
+  
+  df_predictions = bestModel.transform(test_data)
+  
+  # STEP 7: Determine the model's accuracy
+  # Log the model's accuracy in MLflow
+  accuracy = evaluator.evaluate(df_predictions, {evaluator.metricName: "accuracy"})
+  
+  mlflow.log_metric("Accuracy", accuracy)
+
+  # We'll also use an MLflow metric to log overall time
+  overall_end_time = time.time()
+  overall_elapsed_time = overall_end_time - overall_start_time
+  mlflow.log_metric("Overall Elapsed Time", overall_elapsed_time)
+
+  # Log the model itself
+  mlflow_spark.log_model(bestModel, "spark-model")
 
 # COMMAND ----------
 
@@ -353,16 +268,6 @@ def training_run(p_max_depth = 2, p_owner = "default") :
 # MAGIC If this is the first time you have run this notebook, you will see that no runs have been recorded yet: <img src="https://github.com/billkellett/flight-school-resources/blob/master/images/mlflow_runs_no_runs_yet_v2.PNG?raw=true" width=300/>
 # MAGIC 
 # MAGIC In the cell below, set the p_max_depth parameter (hint: try values between 1 and 10).  Set the p_owner value to some text string.  Run the cell several times, and change the parameters for each execution.
-
-# COMMAND ----------
-
-# Train and test a model.  Run this several times using different parameter values.  
-
-
-for i in range(2,10):
-  print("p_max_depth --> {}".format(i))
-  training_run(p_max_depth = i, p_owner = "default")
-
 
 # COMMAND ----------
 

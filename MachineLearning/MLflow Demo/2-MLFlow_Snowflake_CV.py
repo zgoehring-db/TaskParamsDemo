@@ -161,10 +161,6 @@ from pyspark.ml import Pipeline
 # MAGIC   - __Parameters__ let us name and record single values for a run.  
 # MAGIC   - __Metrics__ also let us name and record single numeric values for a run.  We can optionally record *multiple* values under a single name.
 # MAGIC   - Finally, we will log the __Model__ itself.
-# MAGIC 
-# MAGIC Notice the parameters that the function below accepts:
-# MAGIC   - __p_max_depth__ is used to specify the maximum depth of the decision tree that will be generated.  You can vary this parameter to tune the accuracy of your model
-# MAGIC   - __p_owner__ is the "value" portion of a Tag we have defined.  You can put any string value into this parameter.
 
 # COMMAND ----------
 
