@@ -17,6 +17,24 @@ spark.sql("USE {}".format(database_name))
 
 # COMMAND ----------
 
+# These are the Spark ML library functions we'll be using
+
+from pyspark.ml.feature import IndexToString, StringIndexer, VectorAssembler
+from pyspark.ml.classification import DecisionTreeClassifier
+from pyspark.ml.evaluation import MulticlassClassificationEvaluator 
+  
+import mlflow
+from mlflow import spark as mlflow_spark # renamed to prevent collisions when doing spark.sql
+
+import time
+
+# Tuning libraries
+from pyspark.ml.tuning import CrossValidator, ParamGridBuilder 
+from pyspark.ml import Pipeline
+
+
+# COMMAND ----------
+
 # MAGIC %sh
 # MAGIC pip install --upgrade mlflow
 
@@ -175,7 +193,7 @@ with mlflow.start_run() as run:
       reading_1,
       reading_2,
       reading_3
-    FROM rac_mlflow_current_readings_labeled
+    FROM current_readings_labeled
   """)
 
   # STEP 2: Index the Categorical data so the Decision Tree can use it
@@ -400,9 +418,7 @@ df_client_raw_data.createOrReplaceTempView("vw_client_raw_data")
 df_client_raw_data = spark.sql("""
 SELECT 
   device_type,
-  device_type_index,
   device_id,
-  device_id_index,
   reading_1,
   reading_2,
   reading_3
@@ -411,11 +427,11 @@ FROM vw_client_raw_data
 
 # Assemble the data into label and features columns
 
-assembler = VectorAssembler( 
-inputCols=["device_type_index", "device_id_index", "reading_1", "reading_2", "reading_3"], 
-outputCol="features")
+# assembler = VectorAssembler( 
+# inputCols=["reading_1", "reading_2", "reading_3"], 
+# outputCol="features")
 
-df_client_raw_data = assembler.transform(df_client_raw_data)
+# df_client_raw_data = assembler.transform(df_client_raw_data)
 
 display(df_client_raw_data)
 
