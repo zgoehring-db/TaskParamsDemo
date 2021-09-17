@@ -41,14 +41,6 @@ jdbcDatabase = dbutils.secrets.get(scope = "rac_scope", key = "azuresqldatabase"
 
 # COMMAND ----------
 
-
-# Create the JDBC URL without passing in the user and password parameters.
-jdbcUrl = "jdbc:sqlserver://{}:{};database={};user={};password={}".format(
-  jdbcHostname, jdbcPort, jdbcDatabase, jdbcUsername, jdbcPassword
-)
-
-# COMMAND ----------
-
 dbutils.notebook.run("./includes/1b_setup", 0, {"database_name": database_name, "user_name": user_name})
 
 # COMMAND ----------
