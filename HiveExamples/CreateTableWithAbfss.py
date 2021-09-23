@@ -1,5 +1,5 @@
 # Databricks notebook source
-spark.conf.set("fs.azure.account.key.racadlsgen2.dfs.core.windows.net", "D1ctf2d4cd2XHEJt7v5EJB/LbsX518340hTuqao1tffxjj5WybGij/nlrkDdLUGBOazZvqh+NWZNKOSvaRrMXQ==")
+spark.conf.set("fs.azure.account.key.racadlsgen2.dfs.core.windows.net", dbutils.secrets.get("rac_scope", "adls_key"))
 
 dbutils.fs.ls("abfss://commondatabase@racadlsgen2.dfs.core.windows.net/")
 
