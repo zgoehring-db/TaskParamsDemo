@@ -99,4 +99,30 @@ SELECT * FROM ${var.database_name}.Fires_Bronze
 
 -- COMMAND ----------
 
+-- MAGIC %md
+-- MAGIC ## Limitation and Solution
+-- MAGIC 
+-- MAGIC Often in SQL Stored procedures users will have something like the following to dynamically look up and store results into a SQL variable. 
+-- MAGIC ```sql
+-- MAGIC DECLARE @sql_var as int
+-- MAGIC SET @sql_var = select top 1 col1 from table_name
+-- MAGIC ```
+-- MAGIC 
+-- MAGIC As you can see in the following command, in Spark SQL it will result in the query itself being that variable.  
+
+-- COMMAND ----------
+
+SET var.callNumber = (select CallNumber from Fires_Bronze limit 1)
+
+
+-- COMMAND ----------
+
+${var.callNumber}
+
+-- COMMAND ----------
+
+select * from Fires_Bronze where CallNumber in (${var.callNumber}) -- NOTE: this may return a different call number than the previous cell
+
+-- COMMAND ----------
+
 
