@@ -100,7 +100,6 @@ SELECT * FROM ${var.database_name}.Fires_Bronze
 -- COMMAND ----------
 
 -- MAGIC %md
--- MAGIC ## Limitation and Solution
 -- MAGIC 
 -- MAGIC Often in SQL Stored procedures users will have something like the following to dynamically look up and store results into a SQL variable. 
 -- MAGIC ```sql
@@ -108,7 +107,7 @@ SELECT * FROM ${var.database_name}.Fires_Bronze
 -- MAGIC SET @sql_var = select top 1 col1 from table_name
 -- MAGIC ```
 -- MAGIC 
--- MAGIC As you can see in the following command, in Spark SQL it will result in the query itself being that variable.  
+-- MAGIC As you can see in the following command, in Spark SQL it will result in the query itself being that variable. But the query can still be used within SQL commands as shown above from a tradition T-SQL environment. This functionality works exactly how a user would expect.    
 
 -- COMMAND ----------
 
