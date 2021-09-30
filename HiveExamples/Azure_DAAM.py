@@ -2,18 +2,18 @@
 # MAGIC %md
 # MAGIC # Data Access and Management - Azure
 # MAGIC 
-# MAGIC In this notebook we will walk through one of the most popular (potentially a universal best practice) for accessing data in Azure Data Lake Storage Gen2. This notebook hopes to show the controls that should be put in place for companies that require a sophisticated data governance model. Not all organizations require this level of data management as some companies may have general data requirements that apply to the majority of users, while other orgs may have various levels of access for each individual users. This notebook applies to the more complex data access requirements or wishes to have. 
+# MAGIC In this notebook we will walk through one of the most popular (potentially a universal best practice) for accessing data in Azure Data Lake Storage Gen2. This notebook hopes to show the controls that should be put in place for companies that require a sophisticated data governance model. Not all organizations require this level of data management as some companies may have general data requirements that apply to the majority of users, while other orgs may have various levels of access for each individual users. This notebook applies to the more complex data access requirements. As an example alternative, some customers are completly fine using Databricks mounts even though all users will have the same data access.  
 # MAGIC 
-# MAGIC As an example, some customers are completly fine using Databricks mounts even though all users will have the same data access.  
-# MAGIC 
-# MAGIC We will complete the following items. 
-# MAGIC 1. ADLS Access  
-# MAGIC 1. Create a Database with Location  
-# MAGIC 1. Create a Delta table
-# MAGIC 1. Manage access to the delta table
+# MAGIC We will complete the following items (not necessarily in this order). 
+# MAGIC - ADLS Access  Overview
+# MAGIC - Create a Database with and without Location
+# MAGIC   - This is a best practice and allows for a better experience when managing tables
+# MAGIC - Create a Delta table
+# MAGIC   - Managed tables (with location) will automatically register in the database
+# MAGIC - Manage access to the delta table
 # MAGIC   - READ, WRITE, Row Level Security, and Column Level Security 
-# MAGIC 1. Show how to enforce secret scope ACLs  
-# MAGIC 1. Show how to enforce cluster ACLs  
+# MAGIC - Show how to enforce secret scope ACLs  
+# MAGIC - Show how to enforce cluster ACLs  
 # MAGIC 
 # MAGIC 
 # MAGIC 
@@ -84,6 +84,7 @@ tenant_id = dbutils.secrets.get("rac_scope", "oneenvtenantid")
 
 # COMMAND ----------
 
+# DBTITLE 1,Notebook configs (see next cell) - we want to use cluster configs
 # # Set configs
 
 # spark.conf.set("fs.azure.account.auth.type.{}.dfs.core.windows.net".format(storage_account_name), "OAuth")
@@ -120,7 +121,7 @@ tenant_id = dbutils.secrets.get("rac_scope", "oneenvtenantid")
 # MAGIC 
 # MAGIC In my opinion setting these at the cluster level is a better as it is a better experience for the developer to not have to set configurations each time. Additionally, there is some limitations to the session level configs that I am not fully aware of, but one being `CREATE DATABASE <database> LOCATION '/path/database'` where this does not work if you provide a location for the database.  
 # MAGIC 
-# MAGIC Session Level Authentication is done with the following Python/Scala:  
+# MAGIC Session Level Authentication is done with the following Python/Scala inside a notebook (see above):  
 # MAGIC ```
 # MAGIC spark.conf.set("fs.azure.account.auth.type.{}.dfs.core.windows.net".format(storage_account_name), "OAuth")
 # MAGIC spark.conf.set("fs.azure.account.oauth.provider.type.{}.dfs.core.windows.net".format(storage_account_name), "org.apache.hadoop.fs.azurebfs.oauth2.ClientCredsTokenProvider")
@@ -167,6 +168,22 @@ dbutils.fs.ls(data_path+"/test_table")
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC ### Table Access Control 
+# MAGIC 
+# MAGIC With [Table Access Control](https://docs.databricks.com/security/access-control/table-acls/table-acl.html) and cluster ACLs you can restrict users to only using the tables within the hive metastore. With table access you should set cluster ACLs so that users must use a cluster with table access enabled appropriately. 
+# MAGIC 
+# MAGIC Direct access described here can be used with table access. 
+# MAGIC 
+# MAGIC Please review permission levels [here](https://docs.databricks.com/security/access-control/table-acls/object-privileges.html#privileges.
+
+# COMMAND ----------
+
+# DBTITLE 1,Grant read access to the table
+# spark.sql("""GRANT SELECT ON TABLE test_table TO `TestDataScienceGroup` """) ## MUST HAVE TABLE ACCESS ENABLED ON THE CLUSTER OTHERWISE THIS ERRORS OUT. Keeping here for demo purposes
+
+# COMMAND ----------
+
 # DBTITLE 1,Must drop table and delete dir because it is an UNMANAGED table
 spark.sql("drop table if exists test_table")
 dbutils.fs.rm(data_path+"/test_table", True)
@@ -178,9 +195,6 @@ spark.sql("""CREATE DATABASE IF NOT EXISTS {}
              LOCATION '{}' """.format(database_name, data_path)
 )
 
-## 
-## this does not work on standard or hc with notebook configs
-## this does work for standard and hc using cluster configs
 
 # COMMAND ----------
 
@@ -216,9 +230,74 @@ SELECT * FROM rac_universal_db.test_table
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC ### Row and column level security 
+# MAGIC 
+# MAGIC This level of security can be accomplished by using [dynamic view functions](https://docs.databricks.com/security/access-control/table-acls/object-privileges.html#dynamic-view-functions). This allows us to create views with specific columns or filters to hide data dynamically using `current_user()` and `is_member()` functions.  
+# MAGIC 
+# MAGIC Below is an example where I fully restrict users from seeing a number of columns by not including them in the view but then I can dynamically show values based on their group assignment.  
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC 
+# MAGIC CREATE OR REPLACE VIEW test_view AS 
+# MAGIC 
+# MAGIC SELECT device_type, device_id, predicted_device_operational_status, -- only select columns users can see
+# MAGIC CASE WHEN is_member('TestDataScienceGroup') THEN reading_1 ELSE 'Redacted' END AS reading_1 -- use a case statement to dynamically show a column
+# MAGIC 
+# MAGIC FROM test_table
+# MAGIC WHERE is_member('TestDataScienceGroup')
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT * FROM test_view
+
+# COMMAND ----------
+
+# DBTITLE 1,Flip the case statement so column doesn't show
+# MAGIC %sql
+# MAGIC 
+# MAGIC CREATE OR REPLACE VIEW test_view AS 
+# MAGIC 
+# MAGIC SELECT device_type, device_id, predicted_device_operational_status, -- only select columns users can see
+# MAGIC CASE WHEN is_member('TestDataScienceGroup') THEN 'Redacted' ELSE reading_1 END AS reading_1 -- use a case statement to dynamically show a column
+# MAGIC 
+# MAGIC FROM test_table
+# MAGIC WHERE is_member('TestDataScienceGroup')
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT * FROM test_view
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC 
+# MAGIC CREATE OR REPLACE VIEW test_view AS 
+# MAGIC 
+# MAGIC SELECT device_type, device_id, predicted_device_operational_status, -- only select columns users can see
+# MAGIC CASE WHEN is_member('TestDataScienceGroup') THEN reading_1 ELSE 'Redacted' END AS reading_1 -- use a case statement to dynamically show a column
+# MAGIC 
+# MAGIC FROM test_table
+# MAGIC WHERE NOT is_member('TestDataScienceGroup')
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT * FROM test_view -- should see no data since I am a member of the TestDataScienceGroup 
+
+# COMMAND ----------
+
 spark.sql("DROP TABLE IF EXISTS test_table")
 
 # COMMAND ----------
 
-# DBTITLE 1,Our "test_table" should be gone from the dir because it is a MANAGED table
+# DBTITLE 1,Our "test_table" should be gone from the directory because it is a MANAGED table
 dbutils.fs.ls(data_path)
+
+# COMMAND ----------
+
+
