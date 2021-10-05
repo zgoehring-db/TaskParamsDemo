@@ -56,6 +56,8 @@ storage_name = "oetrta"
 # MAGIC   
 # MAGIC 
 # MAGIC When we do this then all people who can connect to the cluster have access to these credentials. This is where [cluster ACLs](https://docs.databricks.com/security/access-control/cluster-acl.html) come into play. Here we have the ability to set up different clusters with various levels of data access. 
+# MAGIC 
+# MAGIC In addition to cluster access controls, admins have the ability to restrict users who can access the instance profile itself which can be leveraged as another control over permissions.  
 
 # COMMAND ----------
 
