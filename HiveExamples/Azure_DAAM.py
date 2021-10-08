@@ -40,7 +40,7 @@
 
 dbutils.widgets.text("DatabaseName", "")
 database_name = dbutils.widgets.get("DatabaseName")
-dbutils.widgets.text("Directory", "ryan.chynoweth@databricks.com")
+dbutils.widgets.text("Directory", "")
 directory = dbutils.widgets.get("Directory")
 
 # COMMAND ----------

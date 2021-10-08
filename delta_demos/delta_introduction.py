@@ -85,11 +85,42 @@
 
 # COMMAND ----------
 
-database_name = "rac_demo_db"
-raw_path = "/Users/ryan.chynoweth@databricks.com/bronze/assignment_1.csv"
-parquet_path = "/Users/ryan.chynoweth@databricks.com/bronze/parquet_iot_table"
-raw_backfill_path = "/Users/ryan.chynoweth@databricks.com/bronze/assignment_1_backfill.csv"
-silver_path = "/Users/ryan.chynoweth@databricks.com/silver/iot_data"
+# MAGIC %md
+# MAGIC ### Purpose of this Notebook
+# MAGIC 
+# MAGIC Now that the marketing and information about Delta Lake is complete let's go over execution of many of the features that are available. It is important to keep in mind that many of these features (not all) have been available in many data warehouses but these are brand new to data lakes which makes delta so "cool". Because of delta users can now abstract away file management and work with table APIs, while still being able to work with structured, semi-structured, and unstructured data. 
+# MAGIC 
+# MAGIC The best part about delta is that it is an **open source** storage format that sits on top of Apache Parquet (also open source) which allows users to avoid vendor lock-in and keep ownership of your data. Many data warehousing solutions require you to store their data in properitery data formats then force users to pay them to access their business data. 
+# MAGIC 
+# MAGIC In this notebook will use data from the `/databricks-datasets/` directory that is available in all Databricks' workspaces to show the following: 
+# MAGIC 1. Merge examples
+# MAGIC 1. Insert, Updates, and Deletes
+# MAGIC 1. Time Travel Capabilities 
+# MAGIC 1. Various table optimization commands
+# MAGIC 1. Delta Change Data Feed (CDC)
+# MAGIC 
+# MAGIC 
+# MAGIC We will try to use as much SQL as possible in this notebook. At times Python will be used but it is not required, just a preference from the developer.  
+
+# COMMAND ----------
+
+dbutils.widgets.text("DatabaseName", "")
+dbutils.widgets.text("UserName", "")
+
+# COMMAND ----------
+
+from pyspark.sql.functions import *
+
+# COMMAND ----------
+
+# DBTITLE 1,MUST PROVIDE WIDGET VALUES
+assert dbutils.widgets.get("DatabaseName") != ""
+assert dbutils.widgets.get("UserName") != ""
+
+# COMMAND ----------
+
+database_name = dbutils.widgets.get("DatabaseName")
+user_name = dbutils.widgets.get("UserName")
 
 # COMMAND ----------
 
@@ -101,8 +132,16 @@ spark.sql(f"USE {database_name}")
 
 # COMMAND ----------
 
+# MAGIC %sql
+# MAGIC -- spark configuration for delta change data capture
+# MAGIC -- This will auto set this for ALL tables created in this session
+# MAGIC -- this can also be done on individual tables
+# MAGIC set spark.databricks.delta.properties.defaults.enableChangeDataCapture = True
+
+# COMMAND ----------
+
 # MAGIC %md
-# MAGIC ### Bringing data into a dataframe
+# MAGIC ### Ingesting Data from DBFS
 # MAGIC 
 # MAGIC The use case we will be demonstrating here illustrates the "Bronze-Silver-Gold" paradigm which is a best practice for data lakes.
 # MAGIC 
@@ -112,84 +151,106 @@ spark.sql(f"USE {database_name}")
 # MAGIC 
 # MAGIC - From the Silver data, we can generate many __Gold__ versions of the data.  Gold versions are typically project-specific, and typically filter, aggregate, and re-format Silver data to make it easy to use in specific projects.
 # MAGIC 
-# MAGIC We'll read the raw data into a __Dataframe__.  The dataframe is a key structure in Apache Spark.  It is an in-memory data structure in a rows-and-columns format that is very similar to a relational database table.  In fact, we'll be creating SQL Views against the dataframes so that we can manipulate them using standard SQL.
+# MAGIC We'll read the raw data into a __Dataframe__.  The dataframe is a key structure in Apache Spark.  It is an in-memory data structure in a rows-and-columns format that is very similar to a relational database table.  In fact, we'll be creating SQL Views against the dataframes so that we can manipulate them using standard SQL. 
+# MAGIC 
+# MAGIC As an alternative pure SQL option we could have used the [`COPY INTO`](https://docs.databricks.com/spark/latest/spark-sql/language-manual/delta-copy-into.html) (which is one of my favorite ways to ingest data).   
 
 # COMMAND ----------
 
-# df.write.format("parquet").save(parquet_path)
+spark.sql("drop table if exists temp_device_delta")
+spark.sql("drop table if exists temp_device_delta_edits")
+
+# load and save data as delta tables
+device_df = (spark.read.format("json").load("/databricks-datasets/iot-stream/data-device/*.json.gz")).drop("value")
+device_df.write.format("delta").saveAsTable("temp_device_delta")
+device_df.write.format("delta").saveAsTable("temp_device_delta_edits")
 
 # COMMAND ----------
 
+# MAGIC %sql
+# MAGIC -- we can use SQL to access data through the data catalog
+# MAGIC SELECT * FROM temp_device_delta
+
+# COMMAND ----------
+
+# DBTITLE 1,We will intentionally create dirty data to show off delta capabilities 
+# lets create negative calorie burn values for some rows
+spark.sql("drop table if exists temp_device_delta_bad")
+spark.sql("drop table if exists temp_device_delta_bad2")
+device_df_bad = device_df.limit(1000).withColumn("calories_burnt", lit(-90000)).drop("value")
+device_df_bad.write.format("delta").saveAsTable("temp_device_delta_bad")
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT * FROM temp_device_delta_bad
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC -- create some more dirty data to change some rows to have negative num_steps
+# MAGIC CREATE TABLE temp_device_delta_bad2 AS 
+# MAGIC SELECT calories_burnt, 
+# MAGIC   device_id, 
+# MAGIC   id, 
+# MAGIC   miles_walked, 
+# MAGIC   -1 as num_steps, 
+# MAGIC   timestamp, 
+# MAGIC   user_id 
+# MAGIC FROM temp_device_delta
+# MAGIC WHERE id not in (SELECT id from temp_device_delta_bad) 
+# MAGIC LIMIT 1000
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT * FROM temp_device_delta_bad2
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC We dirtied some data so that we can show off our merge capabilities! We now have "dirty" data in our **managed** table within databricks 
+
+# COMMAND ----------
+
+# DBTITLE 1,Let's do a merge to add the dirty data to our bronze table
+# MAGIC %sql
+# MAGIC MERGE INTO temp_device_delta as target 
+# MAGIC USING temp_device_delta_bad as source 
+# MAGIC ON target.id = source.id 
+# MAGIC WHEN MATCHED AND source.calories_burnt = -90000 THEN UPDATE SET * ; 
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT * FROM temp_device_delta where calories_burnt = -90000
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC MERGE INTO temp_device_delta as target 
+# MAGIC USING temp_device_delta_bad2 as source 
+# MAGIC ON target.id = source.id 
+# MAGIC WHEN MATCHED THEN UPDATE SET * ; 
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT * FROM temp_device_delta where num_steps = -1
+
+# COMMAND ----------
+
+# DBTITLE 1,Syntax to convert an existing parquet dataset to a delta table
 # MAGIC %sql
 # MAGIC -- CONVERT TO DELTA [ table_identifier | parquet.`<path-to-table>` ] [NO STATISTICS]
 # MAGIC -- [PARTITIONED BY (col_name1 col_type1, col_name2 col_type2, ...)]
 
 # COMMAND ----------
 
-# load and display data
-df = spark.read.format("csv") \
-  .option("inferSchema", "true") \
-  .option("header", "true") \
-  .option("sep", ",") \
-  .load(raw_path)
-
-display(df)
-
-# COMMAND ----------
-
-# Read the backfill data into a dataframe so that we can "stream" into delta
-df_backfill = (spark
-               .read
-               .format("csv")
-               .option("inferSchema", "true")
-               .option("header", "true")
-               .load(raw_backfill_path))
-
-display(df_backfill)
-
-# COMMAND ----------
-
-# Create a temporary view on the dataframes to enable SQL
-df.createOrReplaceTempView("historical_bronze_vw")
-df_backfill.createOrReplaceTempView("historical_bronze_backfill_vw")
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC First let's create a managed delta table. 
-# MAGIC 
-# MAGIC To do so we will write the data from the CSV to the delta format. 
-
-# COMMAND ----------
-
 # MAGIC %sql
-# MAGIC -- Create a Delta Lake table for the main bronze table
-# MAGIC 
-# MAGIC DROP TABLE IF EXISTS sensor_readings_historical_bronze;
-# MAGIC 
-# MAGIC CREATE TABLE sensor_readings_historical_bronze
-# MAGIC Using Delta
-# MAGIC -- LOCATION '/Users/ryan.chynoweth@databricks.com/silver/iot_data'
-# MAGIC as Select * from historical_bronze_vw
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC SELECT * FROM sensor_readings_historical_bronze
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC -- Let's count the records in the Bronze table
-# MAGIC 
-# MAGIC SELECT COUNT(*) FROM sensor_readings_historical_bronze
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC SELECT count(*) as status_count, device_operational_status
-# MAGIC FROM sensor_readings_historical_bronze
-# MAGIC GROUP BY device_operational_status
+# MAGIC SELECT sum(miles_walked) as summed_miles, user_id
+# MAGIC FROM temp_device_delta
+# MAGIC GROUP BY user_id
 # MAGIC ORDER BY 1
 
 # COMMAND ----------
@@ -197,23 +258,24 @@ df_backfill.createOrReplaceTempView("historical_bronze_backfill_vw")
 # MAGIC %md
 # MAGIC ### Create Silver table
 # MAGIC 
-# MAGIC So we have our original dataset and a backfill dataset. To demonstrate a key feature of Delta we will merge our backfill data to create a silver delta table. 
+# MAGIC Okay so we have created a **bronze** table and some of the data is dirty. Let's write some code to fix the data and write it to a **silver** table.  
 
 # COMMAND ----------
 
 # MAGIC %sql
 # MAGIC -- Let's create a Silver table.  We'll start with the Bronze data, then make several improvements
 # MAGIC 
-# MAGIC DROP TABLE IF EXISTS sensor_readings_historical_silver;
+# MAGIC DROP TABLE IF EXISTS iot_readings_silver;
 # MAGIC 
-# MAGIC CREATE TABLE sensor_readings_historical_silver 
+# MAGIC CREATE TABLE iot_readings_silver  
 # MAGIC using Delta
-# MAGIC as select * from historical_bronze_vw
+# MAGIC as select * from temp_device_delta
 
 # COMMAND ----------
 
+# DBTITLE 1,How is there people who burned -90,000 calories???
 # MAGIC %sql
-# MAGIC SELECT * FROM sensor_readings_historical_silver where id = 'ZZZdbfac1b5-f6af-4d0d-a98a-c1be9be29678'
+# MAGIC SELECT * FROM iot_readings_silver where calories_burnt=-90000
 
 # COMMAND ----------
 
@@ -223,96 +285,77 @@ df_backfill.createOrReplaceTempView("historical_bronze_backfill_vw")
 # MAGIC -- The entire backfill batch will be treated as an atomic transaction,
 # MAGIC -- and we can do both inserts and updates within a single batch.
 # MAGIC 
-# MAGIC MERGE INTO sensor_readings_historical_silver AS target 
-# MAGIC USING historical_bronze_backfill_vw AS source  
-# MAGIC   ON target.id = source.id
-# MAGIC WHEN MATCHED THEN UPDATE SET * 
-# MAGIC WHEN NOT MATCHED THEN INSERT * 
-
-# COMMAND ----------
-
-# MAGIC %md 
-# MAGIC The inserted rows have "ZZZ" and updated rows do not. All rows we inserted have the date 2015-02-21
+# MAGIC MERGE INTO iot_readings_silver as target 
+# MAGIC USING temp_device_delta_edits as source 
+# MAGIC ON target.id = source.id 
+# MAGIC WHEN MATCHED AND target.calories_burnt = -90000 THEN UPDATE SET *
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC -- Verify that the upserts worked correctly.
-# MAGIC 
-# MAGIC SELECT * FROM sensor_readings_historical_silver
-# MAGIC where id = 'ZZZdbfac1b5-f6af-4d0d-a98a-c1be9be29678'
+# MAGIC -- there should be no outputs
+# MAGIC SELECT * FROM iot_readings_silver where calories_burnt=-90000
 
 # COMMAND ----------
 
 # MAGIC %md 
-# MAGIC Lets look into updating some bad data by using some window functions. We want to replace the values of 999.99 with local averages. 
+# MAGIC ### Spark SQL 
+# MAGIC 
+# MAGIC Spark SQL is a very mature language that is ANSI SQL Compliant and has many of the functions available in other SQL variations. So lets look into updating some bad data by using some window functions. We want to replace the values of -1 with local averages. 
 
 # COMMAND ----------
 
 # MAGIC %sql
 # MAGIC SELECT * 
-# MAGIC FROM sensor_readings_historical_silver
-# MAGIC WHERE reading_1 = 999.99
+# MAGIC FROM iot_readings_silver
+# MAGIC WHERE num_steps = -1
 
 # COMMAND ----------
 
 # MAGIC %sql
 # MAGIC -- We'll create a table of these interpolated readings, then later we'll merge it into the Silver table.
 # MAGIC 
-# MAGIC DROP TABLE IF EXISTS sensor_readings_historical_interpolations;
+# MAGIC DROP TABLE IF EXISTS iot_readings_intermediate;
 # MAGIC 
-# MAGIC CREATE TABLE sensor_readings_historical_interpolations AS (
+# MAGIC CREATE TABLE iot_readings_intermediate AS (
 # MAGIC   WITH lags_and_leads AS (
-# MAGIC     SELECT
+# MAGIC SELECT
 # MAGIC       id, 
-# MAGIC       reading_time,
-# MAGIC       device_type,
+# MAGIC       user_id,
+# MAGIC       calories_burnt,
+# MAGIC       miles_walked,
 # MAGIC       device_id,
-# MAGIC       device_operational_status,
-# MAGIC       reading_1,
-# MAGIC       LAG(reading_1, 1, 0)  OVER (PARTITION BY device_id ORDER BY reading_time ASC, id ASC) AS reading_1_lag,
-# MAGIC       LEAD(reading_1, 1, 0) OVER (PARTITION BY device_id ORDER BY reading_time ASC, id ASC) AS reading_1_lead,
-# MAGIC       reading_2,
-# MAGIC       LAG(reading_2, 1, 0)  OVER (PARTITION BY device_id ORDER BY reading_time ASC, id ASC) AS reading_2_lag,
-# MAGIC       LEAD(reading_2, 1, 0) OVER (PARTITION BY device_id ORDER BY reading_time ASC, id ASC) AS reading_2_lead,
-# MAGIC       reading_3,
-# MAGIC       LAG(reading_3, 1, 0)  OVER (PARTITION BY device_id ORDER BY reading_time ASC, id ASC) AS reading_3_lag,
-# MAGIC       LEAD(reading_3, 1, 0) OVER (PARTITION BY device_id ORDER BY reading_time ASC, id ASC) AS reading_3_lead
-# MAGIC     FROM sensor_readings_historical_silver
+# MAGIC       timestamp,
+# MAGIC       num_steps, 
+# MAGIC       LAG(num_steps, 1, 0)  OVER (PARTITION BY device_id ORDER BY timestamp ASC, device_id ASC) AS num_steps_lag,
+# MAGIC       LEAD(num_steps, 1, 0) OVER (PARTITION BY device_id ORDER BY timestamp ASC, device_id ASC) AS num_steps_lead
+# MAGIC     FROM iot_readings_silver
 # MAGIC   )
 # MAGIC   SELECT 
-# MAGIC     id,
-# MAGIC     reading_time,
-# MAGIC     device_type,
-# MAGIC     device_id,
-# MAGIC     device_operational_status,
-# MAGIC     ((reading_1_lag + reading_1_lead) / 2) AS reading_1,
-# MAGIC     ((reading_2_lag + reading_2_lead) / 2) AS reading_2,
-# MAGIC     ((reading_3_lag + reading_3_lead) / 2) AS reading_3
+# MAGIC       id, 
+# MAGIC       user_id,
+# MAGIC       calories_burnt,
+# MAGIC       miles_walked,
+# MAGIC       device_id,
+# MAGIC       timestamp,
+# MAGIC     ((num_steps_lag + num_steps_lead) / 2) AS num_steps
+# MAGIC     
 # MAGIC   FROM lags_and_leads
-# MAGIC   WHERE reading_1 = 999.99
-# MAGIC   ORDER BY id ASC
+# MAGIC   WHERE num_steps=-1
 # MAGIC )
 
 # COMMAND ----------
 
 # MAGIC %sql
 # MAGIC -- Lets take a look at the data we fixed 
-# MAGIC SELECT * FROM sensor_readings_historical_interpolations
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC -- Let's see how many interpolations we have.  There should be 367 rows.
-# MAGIC 
-# MAGIC SELECT COUNT(*) FROM sensor_readings_historical_interpolations
+# MAGIC SELECT * FROM iot_readings_intermediate
 
 # COMMAND ----------
 
 # MAGIC %sql
 # MAGIC -- Lets merge the tables together so that we can fix those 999.99 values
-# MAGIC MERGE INTO sensor_readings_historical_silver AS target 
-# MAGIC USING sensor_readings_historical_interpolations AS source 
+# MAGIC MERGE INTO iot_readings_silver AS target 
+# MAGIC USING iot_readings_intermediate AS source 
 # MAGIC ON target.id = source.id
 # MAGIC 
 # MAGIC WHEN MATCHED THEN UPDATE SET * 
@@ -321,207 +364,207 @@ df_backfill.createOrReplaceTempView("historical_bronze_backfill_vw")
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC -- Now make sure we got rid of all the bogus readings.
+# MAGIC -- Now make sure we got rid of all the bogus steps.
 # MAGIC SELECT * 
-# MAGIC FROM sensor_readings_historical_silver
-# MAGIC WHERE reading_1 = 999.99
+# MAGIC FROM iot_readings_silver
+# MAGIC WHERE num_steps = -1
+
+# COMMAND ----------
+
+# DBTITLE 1,Inserts, updates, and deletes!
+# MAGIC %sql
+# MAGIC INSERT INTO iot_readings_silver VALUES (200, 5, 2000000, 1.59, 10000, '2021-01-01 21:12:34.123456', 16);
+# MAGIC UPDATE iot_readings_silver SET num_steps=12000 WHERE user_id=33;
+# MAGIC DELETE FROM iot_readings_silver WHERE user_id=22;
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC delete from sensor_readings_historical_silver
-# MAGIC WHERE reading_1 = 999.99
+# MAGIC SELECT * FROM iot_readings_silver WHERE id = 2000000;
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT * FROM iot_readings_silver WHERE user_id=33;
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT * FROM iot_readings_silver WHERE user_id=22;
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Now we've lost visibility into which readings were initially faulty... use Time Travel to recover this information.
+# MAGIC ### Time travel
+# MAGIC 
+# MAGIC We messed up our data! Let's use time travel to roll back the changes to version 2 of our table, as that was the last time our data was clean. 
 
 # COMMAND ----------
 
 # MAGIC %sql
 # MAGIC -- List all the versions of the table that are available to us
 # MAGIC 
-# MAGIC DESCRIBE HISTORY sensor_readings_historical_silver
+# MAGIC DESCRIBE HISTORY iot_readings_silver
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC -- Ah, version 1 should have the 999.99 values
 # MAGIC 
 # MAGIC SELECT * 
-# MAGIC FROM sensor_readings_historical_silver 
-# MAGIC VERSION AS OF 1 
-# MAGIC WHERE reading_1 = 999.99
+# MAGIC FROM iot_readings 
+# MAGIC VERSION AS OF 2
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC CREATE OR REPLACE TABLE iot_readings_silver AS 
+# MAGIC SELECT * FROM iot_readings_silver
+# MAGIC VERSION AS OF 2
+
+# COMMAND ----------
+
+# DBTITLE 1,The user we added is gone!
+# MAGIC %sql
+# MAGIC -- you can write queries to test the other changes we made too if you want
+# MAGIC SELECT * FROM iot_readings_silver 
+# MAGIC WHERE user_id = 2000000
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC DESCRIBE HISTORY iot_readings_silver
+
+# COMMAND ----------
+
+# DBTITLE 1,Check out some of the metadata about our table
+# MAGIC %sql
+# MAGIC DESCRIBE EXTENDED iot_readings_silver
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC What does the delta table look like under the hood?
+# MAGIC **What does the delta table look like under the hood?**
 
 # COMMAND ----------
 
-dbutils.fs.ls(f"dbfs:/user/hive/warehouse/{database_name}.db/sensor_readings_historical_silver")
+dbutils.fs.ls(f"dbfs:/user/hive/warehouse/{database_name}.db/iot_readings")
 
 # As you can see, the data is just broken into a set of files, without regard to the meaning of the data
+# the "_delta_log" is where the magic happens
 
 # COMMAND ----------
 
+# DBTITLE 1,Optimizing our table for faster reads
 # MAGIC %sql
-# MAGIC optimize sensor_readings_historical_silver 
+# MAGIC -- optimize compacts our table to avoid small files
+# MAGIC -- ZORDER is an index for data skipping 
+# MAGIC OPTIMIZE iot_readings_silver ZORDER BY timestamp
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC -- Let's create a Silver table partitioned by Device. 
-# MAGIC -- Create a new table, so we can compare new and old
+# MAGIC %md
+# MAGIC ### Change Data Feed
 # MAGIC 
-# MAGIC DROP TABLE IF EXISTS sensor_readings_historical_silver_by_device;
+# MAGIC CDF is a CDC mechanism that allows for effecient CDC operations between versions of a delta table. 
 # MAGIC 
-# MAGIC CREATE TABLE sensor_readings_historical_silver_by_device 
-# MAGIC using Delta
-# MAGIC partitioned by (device_id) 
-# MAGIC as select * from sensor_readings_historical_silver 
+# MAGIC The command below gets a result set of all the changes that occured between versions 1 and 2 of the table. 
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC -- We can see partition information
+# MAGIC SELECT * FROM table_changes('iot_readings_silver', 1, 2)
+
+# COMMAND ----------
+
+# MAGIC %md ## Delta CDC gives back 4 cdc types in the "__cdc_type" column:  
 # MAGIC 
-# MAGIC DESCRIBE EXTENDED sensor_readings_historical_silver_by_device
-
-# COMMAND ----------
-
-# Now we have subdirectories for each device, with physical files inside them
-# Will that speed up queries?
-
-dbutils.fs.ls(f"dbfs:/user/hive/warehouse/{database_name}.db/sensor_readings_historical_silver_by_device")
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC -- insert new data with an extra column into the gold table
-# MAGIC insert into sensor_readings_historical_silver
-# MAGIC select *, 1 as new_col
-# MAGIC from sensor_readings_historical_silver
-# MAGIC limit 10
-
-# COMMAND ----------
-
-spark.sql("SET spark.databricks.delta.schema.autoMerge.enabled = true")  # set our spark configuration for schema merge
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC -- insert new data with an extra column into the gold table
-# MAGIC insert into sensor_readings_historical_silver
-# MAGIC select *, 1 as new_col
-# MAGIC from sensor_readings_historical_silver
-# MAGIC limit 10
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC select * from sensor_readings_historical_silver -- look at the new column
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC select * from sensor_readings_historical_silver where new_col is not null -- look at the new column with values
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC -- lets get rid of the new column and do some streaming
-# MAGIC DROP TABLE IF EXISTS sensor_readings_historical_silver;
+# MAGIC | Change Type             | Description                                                               |
+# MAGIC |----------------------|---------------------------------------------------------------------------|
+# MAGIC | **update_preimage**  | Content of the row before an update                                       |
+# MAGIC | **update_postimage** | Content of the row after the update (what you want to capture downstream) |
+# MAGIC | **delete**           | Content of a row that has been deleted                                    |
+# MAGIC | **insert**           | Content of a new row that has been inserted                               |
 # MAGIC 
-# MAGIC CREATE TABLE sensor_readings_historical_silver
-# MAGIC using Delta
-# MAGIC as select * from sensor_readings_historical_silver_by_device
+# MAGIC Therefore, 1 update will result in 2 rows in the cdc stream (one row with the previous values, one with the new values)
+# MAGIC 
+# MAGIC 
+# MAGIC The command below will get the most recent version of each record from our change records. This result set can then be merged into downstream tables 
 
 # COMMAND ----------
 
-# MAGIC %sql 
-# MAGIC select * from sensor_readings_historical_silver
+# MAGIC %sql
+# MAGIC -- Now I want to select the changes between version 0 and version 1 and update my gold table
+# MAGIC -- first let's create a temp view
+# MAGIC 
+# MAGIC CREATE OR REPLACE TEMPORARY VIEW iot_readings_cdc
+# MAGIC     AS 
+# MAGIC     SELECT 
+# MAGIC       calories_burnt
+# MAGIC       , device_id
+# MAGIC       , id
+# MAGIC       , miles_walked
+# MAGIC       , num_steps
+# MAGIC       , timestamp
+# MAGIC       , user_id
+# MAGIC       , _change_type
+# MAGIC       , rank
+# MAGIC       , _commit_version
+# MAGIC 
+# MAGIC       FROM (
+# MAGIC         SELECT *, 
+# MAGIC 
+# MAGIC         dense_rank() OVER (PARTITION BY id ORDER BY _commit_version DESC) as rank
+# MAGIC 
+# MAGIC 
+# MAGIC         FROM table_changes('iot_readings_silver', 4,5) 
+# MAGIC 
+# MAGIC         WHERE _change_type != 'update_preimage'
+# MAGIC       ) 
+# MAGIC       WHERE rank = 1
+# MAGIC ;
+# MAGIC 
+# MAGIC SELECT * FROM iot_readings_cdc
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC CREATE OR REPLACE TABLE iot_readings_gold AS 
+# MAGIC 
+# MAGIC SELECT * FROM iot_readings_silver
+
+# COMMAND ----------
+
+# DBTITLE 1,We can merge data into downstream tables with the following command
+# MAGIC %sql
+# MAGIC -- this command handles updates, deletes, and inserts!!
+# MAGIC 
+# MAGIC 
+# MAGIC MERGE INTO iot_readings_gold
+# MAGIC 
+# MAGIC USING iot_readings_cdc AS source
+# MAGIC   ON iot_readings_gold.id = source.id
+# MAGIC   
+# MAGIC WHEN MATCHED AND source._change_type = 'delete' THEN DELETE
+# MAGIC 
+# MAGIC WHEN MATCHED AND source._change_type = 'update_postimage' THEN 
+# MAGIC   UPDATE SET calories_burnt=source.calories_burnt, device_id=source.device_id, id=source.id, miles_walked=source.miles_walked, num_steps=source.num_steps, timestamp=source.timestamp, user_id=source.user_id
+# MAGIC   
+# MAGIC WHEN NOT MATCHED AND source._change_type = 'insert' THEN 
+# MAGIC   INSERT ( calories_burnt, device_id, id, miles_walked, num_steps, timestamp, user_id) 
+# MAGIC   VALUES (source.calories_burnt, source.device_id, source.id, source.miles_walked, source.num_steps, source.timestamp, source.user_id)
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT * FROM iot_readings_gold
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC 
-# MAGIC ##### Delta Streaming 
+# MAGIC That's it! A quick "gentle" introduction to Delta lake. 
 # MAGIC 
-# MAGIC Now let's look into using delta as a streaming source and a streaming sink. 
-
-# COMMAND ----------
-
-silver_stream_df = spark.readStream.format("delta").table("{}.sensor_readings_historical_silver".format(database_name))
-
-# COMMAND ----------
-
-from pyspark.sql.functions import col 
-
-def transform_stream(microBatchDF, batchId):
-    # TRANSFORMER
-    (microBatchDF.filter(col("device_type") == "TRANSFORMER")
-     .write
-     .format("delta")
-     .mode("append")
-     .saveAsTable("transformer_readings_agg") )
-    
-    # RECTIFIER
-    (microBatchDF.filter(col("device_type") == "RECTIFIER")
-     .write
-     .format("delta")
-     .mode("append")
-     .saveAsTable("rectifier_readings_agg") )
-
-# COMMAND ----------
-
-checkpoint_loc = "/Users/ryan.chynoweth@databricks.com/checkpoints_demo"
-dbutils.fs.rm(checkpoint_loc, True)
-
-# COMMAND ----------
-
-(silver_stream_df.writeStream
-    .format("delta")
-    .option("checkpointLocation", checkpoint_loc)
-#     .trigger(once=True)
-    .foreachBatch(transform_stream)
-    .outputMode("update")
-    .start())
-
-# COMMAND ----------
-
-import time
-
-next_row = 0
-
-while next_row < 12000:
-  
-  time.sleep(1)
-
-  next_row += 1
-  
-  spark.sql(f"""
-    INSERT INTO sensor_readings_historical_silver (
-      SELECT * FROM historical_bronze_vw
-      LIMIT 1000 ) """)
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC select * from rectifier_readings_agg
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC select * from transformer_readings_agg
-
-# COMMAND ----------
-
-# stop all of our streams
-for s in spark.streams.active:
-  s.stop()
+# MAGIC If you are interested in more delta lake then you should check out [Spark Streaming](https://docs.databricks.com/delta/delta-streaming.html) with Delta Lake. Everything we did in this notebook was batch processing, but the same tables can be streaming.  
 
 # COMMAND ----------
 
