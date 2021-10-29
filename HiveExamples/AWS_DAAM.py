@@ -87,8 +87,8 @@ dbutils.fs.ls(data_path)
 spark.sql("""CREATE TABLE test_table
   USING DELTA
   LOCATION '{}/test_table'
-  AS SELECT * FROM rac_demo_db.application_output
-  """.format(data_path)
+  AS SELECT * FROM {}.application_output
+  """.format(data_path, database_name)
          )
 
 # COMMAND ----------
@@ -134,8 +134,8 @@ spark.sql(""" USE {}""".format(database_name))
 # DBTITLE 1,Same code as above but without the location
 spark.sql("""CREATE TABLE test_table
   USING DELTA
-  AS SELECT * FROM rac_demo_db.application_output
-  """.format(data_path)
+  AS SELECT * FROM {}.application_output
+  """.format(database_name)
          )
 
 # COMMAND ----------

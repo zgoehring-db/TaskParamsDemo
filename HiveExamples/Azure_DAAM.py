@@ -52,17 +52,17 @@ directory = dbutils.widgets.get("Directory")
 # MAGIC 
 # MAGIC 1. Create a secret scope.  
 # MAGIC   ```
-# MAGIC   databricks secrets create-scope --scope demo
+# MAGIC   databricks secrets create-scope --scope <SCOPE NAME>
 # MAGIC   ``` 
 # MAGIC 
 # MAGIC 1. Add a secret to the scope.  
 # MAGIC   ```
-# MAGIC   databricks secrets put --scope demo --key oneenvstoragename --string-value <STORAGE ACCOUNT NAME>
+# MAGIC   databricks secrets put --scope <SCOPE NAME> --key <SECRET KEY NAME> --string-value <SECRET VALUE>
 # MAGIC   ```
 # MAGIC   
 # MAGIC 1. Grant a user/group the ability to READ and LIST secrets from the scope. Possible permissions are READ, WRITE, MANAGE  
 # MAGIC   ```
-# MAGIC   databricks secrets put-acl --scope demo --principal <user i.e. ryan.chynoweth@databricks.com OR group> --permission READ
+# MAGIC   databricks secrets put-acl --scope <SCOPE NAME> --principal <user i.e. ryan.chynoweth@databricks.com OR group> --permission READ
 # MAGIC   ```
 # MAGIC   
 # MAGIC   It is important to note that Databricks admins will have MANAGE permissions for all secret scopes in the workspace. So non-admin users will not have access to the scope you create unless explicitly granted. In the scenario above I would have created a scope and added a secret, then gave someone permission to READ the scope. Since we are using service principals to authenticate against ADLS Gen2, we want to ensure that only specific people have access to the credentials. It would be a best practice to use groups to manage these ACLs.  
@@ -108,12 +108,12 @@ tenant_id = dbutils.secrets.get("rac_scope", "oneenvtenantid")
 # MAGIC ```
 # MAGIC fs.azure.account.auth.type OAuth
 # MAGIC fs.azure.account.oauth.provider.type org.apache.hadoop.fs.azurebfs.oauth2.ClientCredsTokenProvider
-# MAGIC fs.azure.account.oauth2.client.id {{secrets/rac_scope/oneenvclientid}}
-# MAGIC fs.azure.account.oauth2.client.secret {{secrets/rac_scope/oneenvclientsecret}}
-# MAGIC fs.azure.account.oauth2.client.endpoint https://login.microsoftonline.com/9f37a392-f0ae-4280-9796-f1864a10effc/oauth2/token
+# MAGIC fs.azure.account.oauth2.client.id {{secrets/<SCOPE NAME>/<SECRET KEY NAME>}}
+# MAGIC fs.azure.account.oauth2.client.secret {{secrets/<SCOPE NAME>/<SECRET KEY NAME>}}
+# MAGIC fs.azure.account.oauth2.client.endpoint https://login.microsoftonline.com/<YOUR TENANT ID>/oauth2/token
 # MAGIC ```
 # MAGIC 
-# MAGIC Where `{{secrets/rac_scope/oneenvclientid}}` is our ability to reference secrets stored in scopes.  
+# MAGIC Where `{{secrets/<SCOPE NAME>/<SECRET KEY NAME>}}` is our ability to reference secrets stored in scopes.  
 # MAGIC 
 # MAGIC When we do this then all people who can connect to the cluster have access to these credentials. This is where [cluster ACLs](https://docs.databricks.com/security/access-control/cluster-acl.html) come into play. Here we have the ability to set up different clusters with various. In union with cluster policies you can enforce that these Spark configurations are set in a particular way so that users still have the ability to create their own clusters. 
 # MAGIC 
@@ -158,8 +158,8 @@ dbutils.fs.ls(data_path)
 spark.sql("""CREATE TABLE test_table
   USING DELTA
   LOCATION '{}/test_table'
-  AS SELECT * FROM rac_demo_db.application_output
-  """.format(data_path)
+  AS SELECT * FROM {}.application_output
+  """.format(data_path, database_name)
          )
 
 # COMMAND ----------
@@ -205,8 +205,8 @@ spark.sql(""" USE {}""".format(database_name))
 # DBTITLE 1,Same code as above but without the location
 spark.sql("""CREATE TABLE test_table
   USING DELTA
-  AS SELECT * FROM rac_demo_db.application_output
-  """.format(data_path)
+  AS SELECT * FROM {}.application_output
+  """.format(database_name)
          )
 
 # COMMAND ----------
@@ -224,8 +224,8 @@ dbutils.fs.ls(data_path)
 
 display(
 spark.sql("""
-SELECT * FROM rac_universal_db.test_table
-""")
+SELECT * FROM {}.test_table
+""".format(database_name))
 )
 
 # COMMAND ----------
