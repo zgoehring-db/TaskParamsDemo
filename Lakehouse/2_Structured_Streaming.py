@@ -250,7 +250,7 @@ import time
 
 next_row = 0
 
-while(next_row < 12000):
+while(next_row < 14):
   
   time.sleep(1)
 
@@ -261,6 +261,7 @@ while(next_row < 12000):
       SELECT * FROM current_readings_labeled
       WHERE id = {next_row} )
   """)
+  
   
 
 

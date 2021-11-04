@@ -146,7 +146,7 @@ describe history encounters_cdc_source
 -- The output of this operation are the changes since version 1 of the delta table
 -- NOTICE: 26 rows!? This is because we provide the pre-commit version of the row and the post-commit version of the row
 --
-SELECT * FROM table_changes('encounters_cdc_source', 1, 2)
+SELECT * FROM table_changes('encounters_cdc_source', 1, 3)
 
 
 -- COMMAND ----------
