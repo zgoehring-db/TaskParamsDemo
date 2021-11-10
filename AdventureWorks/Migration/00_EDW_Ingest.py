@@ -12,18 +12,17 @@
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC CREATE WIDGET TEXT DatabaseName DEFAULT '';
+# MAGIC CREATE WIDGET TEXT DatabaseNamePrefix DEFAULT '';
 # MAGIC CREATE WIDGET TEXT UserName DEFAULT '';
 # MAGIC CREATE WIDGET TEXT TableName Default '';
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC SET var.database_name = $DatabaseName ; 
+# MAGIC SET var.database_name_prefix = $DatabaseNamePrefix ; 
 # MAGIC SET var.user_name = $UserName ; 
-# MAGIC SET var.table_location = '/users/${var.user_name}/databases/${var.database_name}' ;
-# MAGIC CREATE DATABASE IF NOT EXISTS ${var.database_name} LOCATION ${var.table_location} ;
-# MAGIC USE ${var.database_name} ;
+# MAGIC SET var.table_name = $TableName
+# MAGIC USE ${var.database_name_prefix}_adventureworks_metadata ;
 
 # COMMAND ----------
 
@@ -33,15 +32,56 @@ from pyspark.sql.functions import col, max, current_timestamp
 
 # COMMAND ----------
 
-database_name = dbutils.widgets.get("DatabaseName")
+database_name_prefix = dbutils.widgets.get("DatabaseNamePrefix")
 user_name = dbutils.widgets.get("UserName")
 table_name = (dbutils.widgets.get("TableName")).lower()
 
-table_location = f'/users/{user_name}/databases/{database_name}/{table_name}'
+# COMMAND ----------
+
+database_name = spark.sql("SELECT * FROM {}_adventureworks_metadata.table_metadata WHERE lower(table_name) = 'address'".format(database_name_prefix, table_name)).collect()[0][0].lower()
+database_name
+
+# COMMAND ----------
+
+database_location = spark.sql("describe database {}".format(database_name)).filter(col("database_description_item") == "Location").select(col("database_description_value")).collect()[0][0]
+print("Database Location: '{}'".format(database_location))
+
+# COMMAND ----------
+
+dbutils.fs.ls("/users/ryan.chynoweth@databricks.com/databases")
+
+# COMMAND ----------
+
+dbutils.fs.ls(database_location)
+
+# COMMAND ----------
+
+table_location = f'{database_location}/{table_name}'
 
 ## "_" before a directory or file name will make it hidden from spark for data operations 
-checkpoint_location = f'/dbfs/users/{user_name}/databases/{database_name}/{table_name}/_ingest_checkpoint.txt'
+checkpoint_location = f'/dbfs/{table_location}/_ingest_checkpoint.txt'
 
+# COMMAND ----------
+
+def checkpoint_read():
+  """ Read the checkpoint file """
+  if os.path.exists(checkpoint_location.replace('/dbfs:', '')):
+    # READ CHECKPOINT IF EXISTS 
+    with open(checkpoint_location.replace('/dbfs:', ''), 'r') as f:
+      ckpt = f.readline()
+    return ckpt
+    
+  else :
+    # RETURN VERSION 0 if Checkoint does not exist 
+    return '1900-01-01'
+  
+  
+def checkpoint_update(timestamp):
+  """ Update the checkpoint file """
+  # WRITE CHECKPOINT 
+  with open(checkpoint_location.replace('/dbfs:', ''), 'w') as f:
+    f.write(str(timestamp))
+  
 
 # COMMAND ----------
 
@@ -57,11 +97,8 @@ url = f"jdbc:sqlserver://{jdbcHostname}:{jdbcPort};database={jdbcDatabase};user=
 
 # COMMAND ----------
 
-checkpoint_date = '1900-01-01 00:00:00'
-if os.path.exists(f"/dbfs/{checkpoint_location}"):
-  check_file = open(checkpoint_location,"r") 
-  checkpoint_date = (check_file.readline())
-  check_file.close()
+checkpoint_date = checkpoint_read()
+checkpoint_date
 
 # COMMAND ----------
 
@@ -73,16 +110,17 @@ df = (spark.read
        
        )
 
+display(df)
+
 # COMMAND ----------
 
 df = df.withColumn("bronze_date", current_timestamp())
 
-df.write.mode("append").option("mergeSchema", True).saveAsTable(table_name)
+df.write.mode("append").option("mergeSchema", True).saveAsTable(f"{database_name}.{table_name}")
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC select * from $TableName limit 100
+display(spark.sql("SELECT * FROM {}.{}".format(database_name, table_name)))
 
 # COMMAND ----------
 
@@ -91,10 +129,17 @@ new_checkpoint
 
 # COMMAND ----------
 
-check_file = open(checkpoint_location,"w") 
-check_file.write(str(new_checkpoint))
-check_file.close()
+checkpoint_update(new_checkpoint)
+
+# COMMAND ----------
+
+checkpoint_date = checkpoint_read()
+checkpoint_date
 
 # COMMAND ----------
 
 dbutils.notebook.exit("Table Ingestion Completed Successfully.")
+
+# COMMAND ----------
+
+

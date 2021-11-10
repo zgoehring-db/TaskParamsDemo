@@ -2,34 +2,35 @@
 # MAGIC %md
 # MAGIC # Data Set Up
 # MAGIC 
-# MAGIC The purpose of this entire demo is to demonstrate the EDW Migration process from end to end. This includes: 
-# MAGIC 1. Data migration 
-# MAGIC 1. Source code migration
-# MAGIC 1. Solution migration (PBI Report)
+# MAGIC The purpose of this entire demo is to show the EDW Migration process from end to end. 
 # MAGIC 
-# MAGIC In this notebook we will set up data from the demo. For ease of use we will download the data from blob storage and write it to our Azure SQL Database which we will be migrating away from. In a real life scenario there would only be the database and no need for this actual step.  
+# MAGIC In this notebook we will set up data for the demo but loading and writing to an Azure SQL Database. For ease of use we will download the data from blob storage and write it to our Azure SQL Database which we will be migrating away from. In a real life scenario there would only be the database and no need for this actual step.  
+# MAGIC 
+# MAGIC NOTE - this is not done for actual migrations and is only due to the demo environment setup.  
 # MAGIC 
 # MAGIC Please ensure you have `com.microsoft.azure:spark-mssql-connector_2.12:1.2.0` installed (Spark 3.1.x).. or the appropriate driver for your spark version.  
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC CREATE WIDGET TEXT DatabaseName DEFAULT '';
 # MAGIC CREATE WIDGET TEXT UserName DEFAULT '';
+# MAGIC CREATE WIDGET TEXT DatabasePrefix DEFAULT '';
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC SET var.database_name = $DatabaseName ; 
 # MAGIC SET var.user_name = $UserName ; 
-# MAGIC SET var.table_location = '/users/${var.user_name}/databases/${var.database_name}' ;
-# MAGIC CREATE DATABASE IF NOT EXISTS ${var.database_name} LOCATION ${var.table_location} ;
-# MAGIC USE ${var.database_name} ;
+# MAGIC SET var.database_prefix = $DatabasePrefix ; 
 
 # COMMAND ----------
 
-database_name = dbutils.widgets.get("DatabaseName")  
 user_name = dbutils.widgets.get("UserName")
+database_prefix = dbutils.widgets.get("DatabasePrefix")
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC USE ${var.database_prefix}_adventureworks_metadata
 
 # COMMAND ----------
 
@@ -52,7 +53,7 @@ def download_file(url):
 
 # COMMAND ----------
 
-tables = [ 'Address', 'AddressType', 'BillOfMaterials', 'BusinessEntity', 'BusinessEntityAddress', 'BusinessEntityContact', 'ContactType', 'CountryRegion', 'CountryRegionCurrency', 'CreditCard', 'Culture', 'Currency', 'CurrencyRate', 'Customer', 'Department', 'Document', 'EmailAddress', 'Employee', 'EmployeeDepartmentHistory', 'EmployeePayHistory', 'Illustration', 'JobCandidate', 'JobCandidate_TOREMOVE', 'Location', 'Password', 'Person', 'PersonCreditCard', 'PersonPhone', 'PhoneNumberType', 'Product', 'ProductCategory', 'ProductCostHistory', 'ProductDescription', 'ProductDocument', 'ProductInventory', 'ProductListPriceHistory', 'ProductModel', 'ProductModelIllustration', 'ProductModelProductDescriptionCulture', 'ProductModelorg', 'ProductPhoto', 'ProductProductPhoto', 'ProductReview', 'ProductSubcategory', 'ProductVendor', 'PurchaseOrderDetail', 'PurchaseOrderHeader', 'SalesOrderDetail', 'SalesOrderHeader', 'SalesOrderHeaderSalesReason', 'SalesPerson', 'SalesPersonQuotaHistory', 'SalesReason', 'SalesTaxRate', 'SalesTerritory', 'SalesTerritoryHistory', 'ScrapReason', 'Shift', 'ShipMethod', 'ShoppingCartItem', 'SpecialOffer', 'SpecialOfferProduct', 'StateProvince', 'Store', 'TransactionHistory', 'TransactionHistoryArchive', 'UnitMeasure', 'Vendor', 'WorkOrder', 'WorkOrderRouting']
+table_list = [i.n for i in spark.sql("SELECT concat(database_name, '.', table_name) as n FROM table_metadata").collect()]
 
 # COMMAND ----------
 
@@ -152,6 +153,11 @@ url = f"jdbc:sqlserver://{jdbcHostname}:{jdbcPort};database={jdbcDatabase};user=
 
 # COMMAND ----------
 
+table_name = "Address".lower()
+full_name = spark.sql("select concat(database_name, '.', table_name) as n FROM table_metadata WHERE lower(table_name) = '{}'".format(table_name)).collect()[0][0]
+
+# COMMAND ----------
+
 ### 
 ### THE FIRST LINE IN ALL THE CSV FILES HAVE ISSUES
 ### 
@@ -161,7 +167,9 @@ for current_file in data_files:
   local_file = download_file(current_file)
   print("Downloading to: '{}'".format(local_file))
 
-  sc = (spark.read.table(table_name).schema)
+  
+  full_name = spark.sql("select concat(database_name, '.', table_name) as n FROM table_metadata WHERE lower(table_name) = '{}'".format(table_name.lower())).collect()[0][0]
+  sc = (spark.read.table(full_name).schema)
 
   df = spark.read.format("csv").option("delimiter", "\t").schema(sc).option("header", "false").option("encoding", "utf-8").load(local_file.replace("/dbfs", ""))
 
@@ -175,5 +183,9 @@ for current_file in data_files:
       .save() )
   except Exception as error :
       print("Connector write failed", error)
+
+
+
+# COMMAND ----------
 
 

@@ -2,7 +2,7 @@
 
 This demo goes through the basic process of migrating a data warehouse to Databricks' Lakehouse.  
 
-Data Warehouse versus Databricks' Lakehouse
+### Data Warehouse versus Databricks' Lakehouse
 
 <img src="https://racadlsgen2.blob.core.windows.net/public/EDW Migration Visuals - Logical Benefits.png" />
 
