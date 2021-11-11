@@ -13,8 +13,8 @@ user_name = "ryan.chynoweth@databricks.com"
 
 # COMMAND ----------
 
-table_list = [ 'Address', 'AddressType', 'BillOfMaterials', 'BusinessEntity', 'BusinessEntityAddress', 'BusinessEntityContact', 'ContactType', 'CountryRegion', 'CountryRegionCurrency', 'CreditCard', 'Culture', 'Currency', 'CurrencyRate', 'Customer', 'Department', 'Document', 'EmailAddress', 'Employee', 'EmployeeDepartmentHistory', 'EmployeePayHistory', 'Illustration', 'JobCandidate', 'JobCandidate_TOREMOVE', 'Location', 'Password', 'Person', 'PersonCreditCard', 'PersonPhone', 'PhoneNumberType', 'Product', 'ProductCategory', 'ProductCostHistory', 'ProductDescription', 'ProductDocument', 'ProductInventory', 'ProductListPriceHistory', 'ProductModel', 'ProductModelIllustration', 'ProductModelProductDescriptionCulture', 'ProductModelorg', 'ProductPhoto', 'ProductProductPhoto', 'ProductReview', 'ProductSubcategory', 'ProductVendor', 'PurchaseOrderDetail', 'PurchaseOrderHeader', 'SalesOrderDetail', 'SalesOrderHeader', 'SalesOrderHeaderSalesReason', 'SalesPerson', 'SalesPersonQuotaHistory', 'SalesReason', 'SalesTaxRate', 'SalesTerritory', 'SalesTerritoryHistory', 'ScrapReason', 'Shift', 'ShipMethod', 'ShoppingCartItem', 'SpecialOffer', 'SpecialOfferProduct', 'StateProvince', 'Store', 'TransactionHistory', 'TransactionHistoryArchive', 'UnitMeasure', 'Vendor', 'WorkOrder', 'WorkOrderRouting']
-
+table_list = [r.table_name for r in spark.sql("SELECT DISTINCT table_name FROM {}_adventureworks_metadata.table_metadata".format(database_prefix)).collect()]
+table_list
 
 # COMMAND ----------
 

@@ -21,7 +21,7 @@
 # MAGIC %sql
 # MAGIC SET var.database_name_prefix = $DatabaseNamePrefix ; 
 # MAGIC SET var.user_name = $UserName ; 
-# MAGIC SET var.table_name = $TableName
+# MAGIC SET var.table_name = $TableName ;
 # MAGIC USE ${var.database_name_prefix}_adventureworks_metadata ;
 
 # COMMAND ----------
@@ -38,21 +38,13 @@ table_name = (dbutils.widgets.get("TableName")).lower()
 
 # COMMAND ----------
 
-database_name = spark.sql("SELECT * FROM {}_adventureworks_metadata.table_metadata WHERE lower(table_name) = 'address'".format(database_name_prefix, table_name)).collect()[0][0].lower()
+database_name = spark.sql("SELECT * FROM {}_adventureworks_metadata.table_metadata WHERE lower(table_name) = '{}'".format(database_name_prefix, table_name)).collect()[0][0].lower()
 database_name
 
 # COMMAND ----------
 
 database_location = spark.sql("describe database {}".format(database_name)).filter(col("database_description_item") == "Location").select(col("database_description_value")).collect()[0][0]
 print("Database Location: '{}'".format(database_location))
-
-# COMMAND ----------
-
-dbutils.fs.ls("/users/ryan.chynoweth@databricks.com/databases")
-
-# COMMAND ----------
-
-dbutils.fs.ls(database_location)
 
 # COMMAND ----------
 
@@ -69,11 +61,11 @@ def checkpoint_read():
     # READ CHECKPOINT IF EXISTS 
     with open(checkpoint_location.replace('/dbfs:', ''), 'r') as f:
       ckpt = f.readline()
-    return ckpt
+    return ckpt[:19]
     
   else :
-    # RETURN VERSION 0 if Checkoint does not exist 
-    return '1900-01-01'
+    # RETURN VERSION 0 if Checkpoint does not exist 
+    return '1900-01-01 00:00:00'
   
   
 def checkpoint_update(timestamp):
@@ -105,7 +97,9 @@ checkpoint_date
 df = (spark.read
         .format("com.microsoft.sqlserver.jdbc.spark")
         .option("url", url)
-        .option("dbtable", "(SELECT TOP 1000 * FROM edw_migration.{} WHERE ModifiedDate >= '{}' ORDER BY ModifiedDate ASC) as data".format(table_name, checkpoint_date)) 
+#         .option("dbtable", "(SELECT TOP 1000 * FROM edw_migration.{} WHERE ModifiedDate >= '{}' ORDER BY ModifiedDate ASC) as data".format(table_name, checkpoint_date)) 
+#         .option("dbtable", "(SELECT * FROM edw_migration.{} WHERE ModifiedDate > '{}') as data".format(table_name, checkpoint_date))  # CONVERT(DATETIME, CONVERT(VARCHAR(20), ModifiedDate, 120))
+        .option("dbtable", "(SELECT * FROM edw_migration.{} WHERE CONVERT(DATETIME, CONVERT(VARCHAR(20), ModifiedDate, 120)) > '{}') as data".format(table_name, checkpoint_date))
         .load()
        
        )
@@ -114,9 +108,27 @@ display(df)
 
 # COMMAND ----------
 
-df = df.withColumn("bronze_date", current_timestamp())
+if len(df.take(1)) == 0:
+  dbutils.notebook.exit("No New Data")
 
-df.write.mode("append").option("mergeSchema", True).saveAsTable(f"{database_name}.{table_name}")
+# COMMAND ----------
+
+table_details = spark.sql("DESCRIBE TABLE {}.{}".format(database_name, table_name))
+display(table_details)
+
+# COMMAND ----------
+
+## If a column is generated then we need to drop to column before inserting. 
+for c in df.columns:
+  comment_value = table_details.filter(col("col_name") == c).select("comment").collect()[0][0]
+  if comment_value == "GENERATED COLUMN":
+    print(c)
+    df = df.drop(c)
+
+# COMMAND ----------
+
+df = df.withColumn("bronze_date", current_timestamp())
+df.write.mode("append").option("mergeSchema", True).saveAsTable(f"{database_name}.{table_name}") # merge schema so we can track the timestamp
 
 # COMMAND ----------
 

@@ -41,6 +41,7 @@ USE ${var.database_name} -- use the metadatabase by default;
 -- MAGIC %python 
 -- MAGIC dbs = [d.database_name for d in spark.sql("SELECT DISTINCT database_name from table_metadata").collect()]
 -- MAGIC for d in dbs:
+-- MAGIC   spark.sql("DROP DATABASE IF EXISTS {} CASCADE".format(d))
 -- MAGIC   database_location = f'/users/{dbutils.widgets.get("UserName")}/databases/{d}'
 -- MAGIC   print(database_location)
 -- MAGIC   if d not in ['dbo']:
@@ -51,7 +52,7 @@ USE ${var.database_name} -- use the metadatabase by default;
 -- MAGIC %python 
 -- MAGIC 
 -- MAGIC table_list = [i.n for i in spark.sql("SELECT concat(database_name, '.', table_name) as n FROM table_metadata").collect()]
--- MAGIC 
+-- MAGIC table_list
 -- MAGIC for t in table_list:
 -- MAGIC   spark.sql("DROP TABLE IF EXISTS {}".format(t))
 
@@ -579,7 +580,7 @@ CREATE OR REPLACE TABLE ${var.database_name_prefix}_Production.Product(
     ProductID int NOT NULL,
     Name string not null,
     ProductNumber string not null, 
-    MakeFlag boolean not null,
+    MakeFlag boolean,
     FinishedodsFlag boolean not null,
     Color string, 
     SafetyStockLevel short NOT NULL,
@@ -617,7 +618,7 @@ ALTER TABLE ${var.database_name_prefix}_Production.Product ADD CONSTRAINT CK_Pro
 ALTER TABLE ${var.database_name_prefix}_Production.Product ADD CONSTRAINT CK_Product_ReorderPoint CHECK (ReorderPoint > 0);
 ALTER TABLE ${var.database_name_prefix}_Production.Product ADD CONSTRAINT CK_Product_StandardCost CHECK (StandardCost >= 0.00);
 ALTER TABLE ${var.database_name_prefix}_Production.Product ADD CONSTRAINT CK_Product_ListPrice CHECK (ListPrice >= 0.00);
-ALTER TABLE ${var.database_name_prefix}_Production.Product ADD CONSTRAINT CK_Product_Weight CHECK (Weight > 0.00);
+ALTER TABLE ${var.database_name_prefix}_Production.Product ADD CONSTRAINT CK_Product_Weight CHECK (Weight >= 0.00 OR Weight is null);
 ALTER TABLE ${var.database_name_prefix}_Production.Product ADD CONSTRAINT CK_Product_DaysToManufacture CHECK (DaysToManufacture >= 0);
 ALTER TABLE ${var.database_name_prefix}_Production.Product ADD CONSTRAINT CK_Product_ProductLine CHECK (UPPER(ProductLine) IN ('S', 'T', 'M', 'R') OR ProductLine IS NULL);
 ALTER TABLE ${var.database_name_prefix}_Production.Product ADD CONSTRAINT CK_Product_Class CHECK (UPPER(Class) IN ('L', 'M', 'H') OR Class IS NULL);
@@ -673,11 +674,9 @@ CREATE OR REPLACE TABLE ${var.database_name_prefix}_Production.ProductInventory(
     Quantity short not null,
     rowguid string not null, 
     ModifiedDate timestamp NOT NULL
---     CONSTRAINT CK_ProductInventory_Shelf CHECK ((Shelf LIKE 'A-Za-z') OR (Shelf = 'N/A')),
 --     CONSTRAINT CK_ProductInventory_Bin CHECK (Bin BETWEEN 0 AND 100)
 );
 
-ALTER TABLE ${var.database_name_prefix}_Production.ProductInventory ADD CONSTRAINT CK_ProductInventory_Shelf CHECK ((Shelf LIKE 'A-Za-z') OR (Shelf = 'N/A'));
 ALTER TABLE ${var.database_name_prefix}_Production.ProductInventory ADD CONSTRAINT CK_ProductInventory_Bin CHECK (Bin BETWEEN 0 AND 100);
 
 
@@ -803,10 +802,10 @@ CREATE OR REPLACE TABLE ${var.database_name_prefix}_Purchasing.PurchaseOrderDeta
     OrderQty short NOT NULL,
     ProductID int NOT NULL,
     UnitPrice double NOT NULL,
-    LineTotal double GENERATED ALWAYS AS (OrderQty * UnitPrice), 
+    LineTotal double GENERATED ALWAYS AS (OrderQty * UnitPrice) COMMENT 'GENERATED COLUMN', 
     ReceivedQty double NOT NULL,
     RejectedQty double NOT NULL,
-    StockedQty double GENERATED ALWAYS AS (ReceivedQty - RejectedQty),
+    StockedQty double GENERATED ALWAYS AS (ReceivedQty - RejectedQty) COMMENT 'GENERATED COLUMN',
     ModifiedDate timestamp NOT NULL
 --     CONSTRAINT CK_PurchaseOrderDetail_OrderQty CHECK (OrderQty > 0), 
 --     CONSTRAINT CK_PurchaseOrderDetail_UnitPrice CHECK (UnitPrice >= 0.00), 
@@ -832,7 +831,7 @@ CREATE OR REPLACE TABLE ${var.database_name_prefix}_Purchasing.PurchaseOrderHead
     SubTotal double not null, 
     TaxAmt double not null, 
     Freight double not null, 
-    TotalDue double GENERATED ALWAYS AS (SubTotal + TaxAmt + Freight), 
+    TotalDue double GENERATED ALWAYS AS (SubTotal + TaxAmt + Freight) COMMENT 'GENERATED COLUMN', 
     ModifiedDate timestamp NOT NULL
 --     CONSTRAINT CK_PurchaseOrderHeader_Status CHECK (Status BETWEEN 1 AND 4),
 --     CONSTRAINT CK_PurchaseOrderHeader_ShipDate CHECK ((ShipDate >= OrderDate) OR (ShipDate IS NULL)), 
@@ -856,7 +855,7 @@ CREATE OR REPLACE TABLE ${var.database_name_prefix}_Sales.SalesOrderDetail(
     SpecialOfferID int NOT NULL,
     UnitPrice double NOT NULL,
     UnitPriceDiscount double not null,
-    LineTotal double GENERATED ALWAYS AS (UnitPrice * (1.0 - UnitPriceDiscount) * OrderQty),
+    LineTotal double GENERATED ALWAYS AS (UnitPrice * (1.0 - UnitPriceDiscount) * OrderQty) COMMENT 'GENERATED COLUMN',
     rowguid string not null, 
     ModifiedDate timestamp NOT NULL
 --     CONSTRAINT CK_SalesOrderDetail_OrderQty CHECK (OrderQty > 0), 
@@ -876,7 +875,7 @@ CREATE OR REPLACE TABLE ${var.database_name_prefix}_Sales.SalesOrderHeader(
     ShipDate timestamp ,
     Status short NOT NULL,
     OnlineOrderFlag boolean NOT NULL,
-    SalesOrderNumber string GENERATED ALWAYS AS (cast(SalesOrderID as STRING)),
+    SalesOrderNumber string GENERATED ALWAYS AS (cast(SalesOrderID as STRING)) COMMENT 'GENERATED COLUMN',
     PurchaseOrderNumber string,
     AccountNumber string,
     CustomerID int NOT NULL,
@@ -891,7 +890,7 @@ CREATE OR REPLACE TABLE ${var.database_name_prefix}_Sales.SalesOrderHeader(
     SubTotal double NOT NULL,
     TaxAmt double NOT NULL,
     Freight double NOT NULL,
-    TotalDue double GENERATED ALWAYS AS (SubTotal + TaxAmt + Freight),
+    TotalDue double GENERATED ALWAYS AS (SubTotal + TaxAmt + Freight) COMMENT 'GENERATED COLUMN',
     Comment string,
     rowguid string not null, 
     ModifiedDate timestamp NOT NULL
@@ -939,7 +938,7 @@ CREATE OR REPLACE TABLE ${var.database_name_prefix}_Sales.SalesPerson(
 --     CONSTRAINT CK_SalesPerson_SalesLastYear CHECK (SalesLastYear >= 0.00) 
 );
 
-ALTER TABLE ${var.database_name_prefix}_Sales.SalesPerson ADD CONSTRAINT CK_SalesPerson_SalesQuota CHECK (SalesQuota > 0.00) ;
+ALTER TABLE ${var.database_name_prefix}_Sales.SalesPerson ADD CONSTRAINT CK_SalesPerson_SalesQuota CHECK (SalesQuota >= 0.00 OR SalesQuota is Null) ;
 ALTER TABLE ${var.database_name_prefix}_Sales.SalesPerson ADD CONSTRAINT CK_SalesPerson_Bonus CHECK (Bonus >= 0.00) ;
 ALTER TABLE ${var.database_name_prefix}_Sales.SalesPerson ADD CONSTRAINT CK_SalesPerson_CommissionPct CHECK (CommissionPct >= 0.00) ;
 ALTER TABLE ${var.database_name_prefix}_Sales.SalesPerson ADD CONSTRAINT CK_SalesPerson_SalesYTD CHECK (SalesYTD >= 0.00) ;
@@ -1048,8 +1047,8 @@ CREATE OR REPLACE TABLE ${var.database_name_prefix}_Purchasing.ShipMethod(
 --     CONSTRAINT CK_ShipMethod_ShipBase CHECK (ShipBase > 0.00), 
 --     CONSTRAINT CK_ShipMethod_ShipRate CHECK (ShipRate > 0.00), 
 );
-ALTER TABLE ${var.database_name_prefix}_Sales.ShipMethod ADD CONSTRAINT CK_ShipMethod_ShipBase CHECK (ShipBase > 0.00) ;
-ALTER TABLE ${var.database_name_prefix}_Sales.ShipMethod ADD CONSTRAINT CK_ShipMethod_ShipRate CHECK (ShipRate > 0.00) ;
+ALTER TABLE ${var.database_name_prefix}_Purchasing.ShipMethod ADD CONSTRAINT CK_ShipMethod_ShipBase CHECK (ShipBase > 0.00) ;
+ALTER TABLE ${var.database_name_prefix}_Purchasing.ShipMethod ADD CONSTRAINT CK_ShipMethod_ShipRate CHECK (ShipRate > 0.00) ;
 
 
 
@@ -1183,7 +1182,7 @@ CREATE OR REPLACE TABLE ${var.database_name_prefix}_Production.WorkOrder(
     WorkOrderID int NOT NULL,
     ProductID int NOT NULL,
     OrderQty int NOT NULL,
-    StockedQty double GENERATED ALWAYS AS (cast((OrderQty - ScrappedQty) as double)),
+    StockedQty double GENERATED ALWAYS AS (cast((OrderQty - ScrappedQty) as double)) COMMENT 'GENERATED COLUMN',
     ScrappedQty short NOT NULL,
     StartDate timestamp NOT NULL,
     EndDate timestamp,
