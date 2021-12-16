@@ -73,7 +73,7 @@ USE ${var.database_name} -- use the metadatabase by default;
 -- ) ON [PRIMARY];
 -- GO
 
-CREATE TABLE ${var.database_name_prefix}_person.Address (
+CREATE OR REPLACE TABLE ${var.database_name_prefix}_person.Address (
     AddressID int NOT NULL,
     AddressLine1 string NOT NULL, 
     AddressLine2 string, 
@@ -99,7 +99,7 @@ CREATE TABLE ${var.database_name_prefix}_person.Address (
 -- ) ON [PRIMARY];
 -- GO
 
-CREATE TABLE ${var.database_name_prefix}_Person.AddressType(
+CREATE OR REPLACE TABLE ${var.database_name_prefix}_Person.AddressType(
     AddressTypeID int NOT NULL,
     Name string NOT NULL,
     rowguid string NOT NULL COMMENT 'default value is uuid()',
@@ -121,7 +121,6 @@ CREATE TABLE ${var.database_name_prefix}_Person.AddressType(
 --     [PerAssemblyQty] [decimal](8, 2) NOT NULL CONSTRAINT [DF_BillOfMaterials_PerAssemblyQty] DEFAULT (1.00),
 --     [ModifiedDate] [datetime] NOT NULL CONSTRAINT [DF_BillOfMaterials_ModifiedDate] DEFAULT (GETDATE()),
 --     CONSTRAINT [CK_BillOfMaterials_EndDate] CHECK (([EndDate] > [StartDate]) OR ([EndDate] IS NULL)),
---     CONSTRAINT [CK_BillOfMaterials_ProductAssemblyID] CHECK ([ProductAssemblyID] <> [ComponentID]),
 --     CONSTRAINT [CK_BillOfMaterials_BOMLevel] CHECK ((([ProductAssemblyID] IS NULL) 
 --         AND ([BOMLevel] = 0) AND ([PerAssemblyQty] = 1.00)) 
 --         OR (([ProductAssemblyID] IS NOT NULL) AND ([BOMLevel] >= 1))), 
@@ -130,7 +129,7 @@ CREATE TABLE ${var.database_name_prefix}_Person.AddressType(
 -- GO
 
 
-CREATE TABLE ${var.database_name_prefix}_Production.BillOfMaterials(
+CREATE OR REPLACE TABLE ${var.database_name_prefix}_Production.BillOfMaterials(
     BillOfMaterialsID int NOT NULL,
     ProductAssemblyID int,
     ComponentID int NOT NULL,
@@ -145,7 +144,6 @@ CREATE TABLE ${var.database_name_prefix}_Production.BillOfMaterials(
 ) ;
 
 ALTER TABLE ${var.database_name_prefix}_Production.BillOfMaterials ADD CONSTRAINT CK_BillOfMaterials_EndDate CHECK ((EndDate > StartDate) OR (EndDate IS NULL));
-ALTER TABLE ${var.database_name_prefix}_Production.BillOfMaterials ADD CONSTRAINT CK_BillOfMaterials_ProductAssemblyID CHECK (ProductAssemblyID <> ComponentID);
 ALTER TABLE ${var.database_name_prefix}_Production.BillOfMaterials ADD CONSTRAINT CK_BillOfMaterials_PerAssemblyQty CHECK (PerAssemblyQty >= 1.00);
 ALTER TABLE ${var.database_name_prefix}_Production.BillOfMaterials ADD CONSTRAINT CK_BillOfMaterials_BOMLevel CHECK (((ProductAssemblyID IS NULL) 
         AND (BOMLevel = 0) AND (PerAssemblyQty = 1.00)) 
@@ -165,7 +163,7 @@ ALTER TABLE ${var.database_name_prefix}_Production.BillOfMaterials ADD CONSTRAIN
 -- ) ON [PRIMARY];
 -- GO
 
-CREATE TABLE ${var.database_name_prefix}_Person.BusinessEntity(
+CREATE OR REPLACE TABLE ${var.database_name_prefix}_Person.BusinessEntity(
 	BusinessEntityID int NOT NULL COMMENT 'Must be unique',
     rowguid string NOT NULL COMMENT 'default value is uuid()',
     ModifiedDate timestamp NOT NULL COMMENT 'default value is current_timestamp()'
@@ -183,8 +181,8 @@ CREATE TABLE ${var.database_name_prefix}_Person.BusinessEntity(
 -- ) ON [PRIMARY];
 
 
-CREATE TABLE ${var.database_name_prefix}_Person.BusinessEntityAddress(
-	BusinessEntityID int NOT NULL,
+CREATE OR REPLACE  TABLE ${var.database_name_prefix}_Person.BusinessEntityAddress(
+	BusinessEntityID int,
     AddressID int NOT NULL,
     AddressTypeID int NOT NULL,
     rowguid string NOT NULL COMMENT 'default value is uuid()',
@@ -202,7 +200,7 @@ CREATE TABLE ${var.database_name_prefix}_Person.BusinessEntityAddress(
 -- ) ON [PRIMARY];
 -- GO
 
-CREATE TABLE ${var.database_name_prefix}_Person.BusinessEntityContact(
+CREATE OR REPLACE TABLE ${var.database_name_prefix}_Person.BusinessEntityContact(
 	BusinessEntityID int NOT NULL,
     PersonID int NOT NULL,
     ContactTypeID int NOT NULL,
@@ -219,7 +217,7 @@ CREATE TABLE ${var.database_name_prefix}_Person.BusinessEntityContact(
 -- ) ON [PRIMARY];
 -- GO
 
-CREATE TABLE ${var.database_name_prefix}_Person.ContactType(
+CREATE OR REPLACE TABLE ${var.database_name_prefix}_Person.ContactType(
     ContactTypeID int NOT NULL,
     Name string NOT NULL, 
     ModifiedDate timestamp not null 
@@ -234,7 +232,7 @@ CREATE TABLE ${var.database_name_prefix}_Person.ContactType(
 -- ) ON [PRIMARY];
 -- GO
 
-CREATE TABLE ${var.database_name_prefix}_Sales.CountryRegionCurrency(
+CREATE OR REPLACE TABLE ${var.database_name_prefix}_Sales.CountryRegionCurrency(
     CountryRegionCode string NOT NULL, 
     CurrencyCode string NOT NULL, 
     ModifiedDate timestamp NOT NULL 
@@ -271,7 +269,7 @@ ALTER TABLE ${var.database_name_prefix}_Person.CountryRegion ADD CONSTRAINT CK_C
 -- ) ON [PRIMARY];
 -- GO
 
-CREATE TABLE ${var.database_name_prefix}_Sales.CreditCard(
+CREATE OR REPLACE TABLE ${var.database_name_prefix}_Sales.CreditCard(
     CreditCardID int NOT NULL,
     CardType string NOT NULL,
     CardNumber string NOT NULL,
@@ -289,7 +287,7 @@ CREATE TABLE ${var.database_name_prefix}_Sales.CreditCard(
 -- ) ON [PRIMARY];
 -- GO
 
-CREATE TABLE ${var.database_name_prefix}_Production.Culture(
+CREATE OR REPLACE TABLE ${var.database_name_prefix}_Production.Culture(
     CultureID string NOT NULL,
     Name string NOT NULL, 
     ModifiedDate timestamp NOT NULL
@@ -297,7 +295,7 @@ CREATE TABLE ${var.database_name_prefix}_Production.Culture(
 
 -- COMMAND ----------
 
-CREATE TABLE ${var.database_name_prefix}_HumanResources.Employee(
+CREATE OR REPLACE TABLE ${var.database_name_prefix}_HumanResources.Employee(
     BusinessEntityID int NOT NULL,
     NationalIDNumber string not null, 
     LoginID string not null,     
@@ -495,7 +493,7 @@ CREATE OR REPLACE TABLE ${var.database_name_prefix}_Production.Illustration(
 
 
 CREATE OR REPLACE TABLE ${var.database_name_prefix}_HumanResources.JobCandidate(
-    JobCandidateID int NOT NULL,
+    JobCandidateID int,
     BusinessEntityID int,
     Resume string, 
     ModifiedDate timestamp NOT NULL
@@ -536,12 +534,12 @@ CREATE OR REPLACE TABLE ${var.database_name_prefix}_Person.Person(
     FirstName string not null,
     MiddleName string,
     LastName string not null,
-    Suffix string not null, 
+    Suffix string , 
     EmailPromotion int NOT NULL, 
-    AdditionalContactInfo string not null,
+    AdditionalContactInfo string,
     Demographics string, 
     rowguid string not null, 
-    ModifiedDate timestamp NOT NULL
+    ModifiedDate timestamp 
 --     CONSTRAINT CK_Person_EmailPromotion CHECK (EmailPromotion BETWEEN 0 AND 2),
 --     CONSTRAINT CK_Person_PersonType CHECK (PersonType IS NULL OR UPPER(PersonType) IN ('SC', 'VC', 'IN', 'EM', 'SP', 'GC'))
 );
@@ -644,16 +642,17 @@ CREATE OR REPLACE TABLE ${var.database_name_prefix}_Production.ProductCostHistor
 --     CONSTRAINT CK_ProductCostHistory_EndDate CHECK ((EndDate >= StartDate) OR (EndDate IS NULL)),
 --     CONSTRAINT CK_ProductCostHistory_StandardCost CHECK (StandardCost >= 0.00)
 );
-ALTER TABLE ${var.database_name_prefix}_Production.ProductCostHistory ADD CONSTRAINT CK_ProductCostHistory_EndDate CHECK ((EndDate >= StartDate) OR (EndDate IS NULL));
+ALTER TABLE ${var.database_name_prefix}_Production.ProductCostHistory ADD
+CONSTRAINT CK_ProductCostHistory_EndDate CHECK ((EndDate >= StartDate) OR (EndDate IS NULL));
 ALTER TABLE ${var.database_name_prefix}_Production.ProductCostHistory ADD CONSTRAINT CK_ProductCostHistory_StandardCost CHECK (StandardCost >= 0.00);
 
 
 
 CREATE OR REPLACE TABLE ${var.database_name_prefix}_Production.ProductDescription(
-    ProductDescriptionID int NOT NULL,
-    Description string not null,
-    rowguid string not null, 
-    ModifiedDate timestamp NOT NULL
+    ProductDescriptionID int,
+    Description string ,
+    rowguid string, 
+    ModifiedDate timestamp
 );
 
 
@@ -789,10 +788,10 @@ CREATE OR REPLACE TABLE ${var.database_name_prefix}_Purchasing.ProductVendor(
 );
 ALTER TABLE ${var.database_name_prefix}_Purchasing.ProductVendor ADD CONSTRAINT CK_ProductVendor_AverageLeadTime CHECK (AverageLeadTime >= 1);
 ALTER TABLE ${var.database_name_prefix}_Purchasing.ProductVendor ADD CONSTRAINT CK_ProductVendor_StandardPrice CHECK (StandardPrice > 0.00);
-ALTER TABLE ${var.database_name_prefix}_Purchasing.ProductVendor ADD CONSTRAINT CK_ProductVendor_LastReceiptCost CHECK (LastReceiptCost > 0.00);
+ALTER TABLE ${var.database_name_prefix}_Purchasing.ProductVendor ADD CONSTRAINT CK_ProductVendor_LastReceiptCost CHECK (LastReceiptCost > 0.00 or LastReceiptCost IS NULL);
 ALTER TABLE ${var.database_name_prefix}_Purchasing.ProductVendor ADD CONSTRAINT CK_ProductVendor_MinOrderQty CHECK (MinOrderQty >= 1);
 ALTER TABLE ${var.database_name_prefix}_Purchasing.ProductVendor ADD CONSTRAINT CK_ProductVendor_MaxOrderQty CHECK (MaxOrderQty >= 1);
-ALTER TABLE ${var.database_name_prefix}_Purchasing.ProductVendor ADD CONSTRAINT CK_ProductVendor_OnOrderQty CHECK (OnOrderQty >= 0);
+ALTER TABLE ${var.database_name_prefix}_Purchasing.ProductVendor ADD CONSTRAINT CK_ProductVendor_OnOrderQty CHECK (OnOrderQty >= 0 OR OnOrderQty IS NULL);
 
 
 CREATE OR REPLACE TABLE ${var.database_name_prefix}_Purchasing.PurchaseOrderDetail(
@@ -874,7 +873,7 @@ CREATE OR REPLACE TABLE ${var.database_name_prefix}_Sales.SalesOrderHeader(
     DueDate timestamp NOT NULL,
     ShipDate timestamp ,
     Status short NOT NULL,
-    OnlineOrderFlag boolean NOT NULL,
+    OnlineOrderFlag boolean,
     SalesOrderNumber string GENERATED ALWAYS AS (cast(SalesOrderID as STRING)) COMMENT 'GENERATED COLUMN',
     PurchaseOrderNumber string,
     AccountNumber string,
@@ -1084,7 +1083,7 @@ CREATE OR REPLACE TABLE ${var.database_name_prefix}_Sales.SpecialOffer(
 ALTER TABLE ${var.database_name_prefix}_Sales.SpecialOffer ADD CONSTRAINT CK_SpecialOffer_EndDate CHECK (EndDate >= StartDate) ;
 ALTER TABLE ${var.database_name_prefix}_Sales.SpecialOffer ADD CONSTRAINT CK_SpecialOffer_DiscountPct CHECK (DiscountPct >= 0.00) ;
 ALTER TABLE ${var.database_name_prefix}_Sales.SpecialOffer ADD CONSTRAINT CK_SpecialOffer_MinQty CHECK (MinQty >= 0) ;
-ALTER TABLE ${var.database_name_prefix}_Sales.SpecialOffer ADD CONSTRAINT CK_SpecialOffer_MaxQty  CHECK (MaxQty >= 0);
+ALTER TABLE ${var.database_name_prefix}_Sales.SpecialOffer ADD CONSTRAINT CK_SpecialOffer_MaxQty  CHECK (MaxQty >= 0 or MaxQty IS NULL);
 
 
 CREATE OR REPLACE TABLE ${var.database_name_prefix}_Sales.SpecialOfferProduct(

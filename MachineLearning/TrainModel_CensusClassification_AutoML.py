@@ -3,7 +3,7 @@
 # MAGIC 
 # MAGIC # Databricks AutoML 
 # MAGIC 
-# MAGIC Databricks AutoML helps you automatically apply machine learning to a dataset. It prepares the dataset for model training and then performs and records a set of trials. Once complete it will display the results and produce a Python notebook with source code for each of the trial runs. The notebook augments the Data Scientist's ability by providing code bases than can be extended upon. AutoML calculates summary statistics on your dataset and saves this information in a notebook that can be reviewed later.  
+# MAGIC [Databricks AutoML](https://docs.databricks.com/applications/machine-learning/automl.html) helps you automatically apply machine learning to a dataset. It prepares the dataset for model training and then performs and records a set of trials. Once complete it will display the results and produce a Python notebook with source code for each of the trial runs. The notebook augments the Data Scientist's ability by providing code bases than can be extended upon. AutoML calculates summary statistics on your dataset and saves this information in a notebook that can be reviewed later.  
 # MAGIC 
 # MAGIC Each model is constructed from **open source** components so that you can deploy them into existing machine learning processes. 
 # MAGIC 
@@ -25,6 +25,8 @@
 # MAGIC   - [XGBoost](https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.XGBRegressor)
 # MAGIC   - [LightGBM](https://lightgbm.readthedocs.io/en/latest/pythonapi/lightgbm.LGBMRegressor.html)
 # MAGIC 
+# MAGIC - **Forecasting models**
+# MAGIC   - [Prophet](https://facebook.github.io/prophet/docs/quick_start.html#python-api) (aka Facebook)
 # MAGIC 
 # MAGIC #### Demo
 # MAGIC 

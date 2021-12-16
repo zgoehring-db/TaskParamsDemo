@@ -99,7 +99,8 @@ df = (spark.read
         .option("url", url)
 #         .option("dbtable", "(SELECT TOP 1000 * FROM edw_migration.{} WHERE ModifiedDate >= '{}' ORDER BY ModifiedDate ASC) as data".format(table_name, checkpoint_date)) 
 #         .option("dbtable", "(SELECT * FROM edw_migration.{} WHERE ModifiedDate > '{}') as data".format(table_name, checkpoint_date))  # CONVERT(DATETIME, CONVERT(VARCHAR(20), ModifiedDate, 120))
-        .option("dbtable", "(SELECT * FROM edw_migration.{} WHERE CONVERT(DATETIME, CONVERT(VARCHAR(20), ModifiedDate, 120)) > '{}') as data".format(table_name, checkpoint_date))
+#         .option("dbtable", "(SELECT * FROM edw_migration.{} WHERE CONVERT(DATETIME, CONVERT(VARCHAR(20), ModifiedDate, 120)) > '{}') as data".format(table_name, checkpoint_date))
+        .option("dbtable", "(SELECT * FROM edw_migration.{} ) as data".format(table_name))
         .load()
        
        )
@@ -127,8 +128,10 @@ for c in df.columns:
 
 # COMMAND ----------
 
+
 df = df.withColumn("bronze_date", current_timestamp())
-df.write.mode("append").option("mergeSchema", True).saveAsTable(f"{database_name}.{table_name}") # merge schema so we can track the timestamp
+df.write.mode("overwrite").option("mergeSchema", True).saveAsTable(f"{database_name}.{table_name}") # merge schema so we can track the timestamp
+
 
 # COMMAND ----------
 

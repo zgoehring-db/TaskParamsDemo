@@ -125,7 +125,8 @@ data_files = [
  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/UnitMeasure.csv',
  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/Vendor.csv',
  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/WorkOrder.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/WorkOrderRouting.csv']
+ 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/WorkOrderRouting.csv'
+]
 
 # COMMAND ----------
 
@@ -153,25 +154,45 @@ url = f"jdbc:sqlserver://{jdbcHostname}:{jdbcPort};database={jdbcDatabase};user=
 
 # COMMAND ----------
 
-table_name = "Address".lower()
-full_name = spark.sql("select concat(database_name, '.', table_name) as n FROM table_metadata WHERE lower(table_name) = '{}'".format(table_name)).collect()[0][0]
+current_file = data_files[0]
+table_name = current_file.split("/")[-1].replace(".csv", "")
+local_file = download_file(current_file)
+print("Downloading to: '{}'".format(local_file))
+
+
+full_name = spark.sql("select concat(database_name, '.', table_name) as n FROM table_metadata WHERE lower(table_name) = '{}'".format(table_name.lower())).collect()[0][0]
+sc = (spark.read.table(full_name).schema)
+
+# each CSV file has different options
+delim = spark.sql("SELECT delim from table_metadata where lower(table_name) = '{}'".format(table_name.lower())).collect()[0][0]
+encode = spark.sql("SELECT encoding from table_metadata where lower(table_name) = '{}'".format(table_name.lower())).collect()[0][0]
+print(f"d: {delim} | e: {encode}")
+
+df = spark.read.format("csv").option("delimiter", delim).schema(sc).option("header", "false").option("encoding", encode).load(local_file.replace("/dbfs", ""))
+if 'bronze_date' in df.columns:
+  df = df.drop('bronze_date')
 
 # COMMAND ----------
 
-### 
-### THE FIRST LINE IN ALL THE CSV FILES HAVE ISSUES
-### 
+
 for current_file in data_files:
 
   table_name = current_file.split("/")[-1].replace(".csv", "")
   local_file = download_file(current_file)
   print("Downloading to: '{}'".format(local_file))
 
-  
+
   full_name = spark.sql("select concat(database_name, '.', table_name) as n FROM table_metadata WHERE lower(table_name) = '{}'".format(table_name.lower())).collect()[0][0]
   sc = (spark.read.table(full_name).schema)
-
-  df = spark.read.format("csv").option("delimiter", "\t").schema(sc).option("header", "false").option("encoding", "utf-8").load(local_file.replace("/dbfs", ""))
+  
+  # each CSV file has different options
+  delim = spark.sql("SELECT delim from table_metadata where lower(table_name) = '{}'".format(table_name.lower())).collect()[0][0]
+  encode = spark.sql("SELECT encoding from table_metadata where lower(table_name) = '{}'".format(table_name.lower())).collect()[0][0]
+  print(f"d: {delim} | e: {encode}")
+  
+  df = spark.read.format("csv").option("delimiter", delim).schema(sc).option("header", "false").option("encoding", encode).load(local_file.replace("/dbfs", ""))
+  if 'bronze_date' in df.columns:
+    df = df.drop('bronze_date')
 
   try:
 
@@ -185,6 +206,10 @@ for current_file in data_files:
       print("Connector write failed", error)
 
 
+
+# COMMAND ----------
+
+df.columns
 
 # COMMAND ----------
 
