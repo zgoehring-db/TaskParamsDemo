@@ -300,4 +300,51 @@ dbutils.fs.ls(data_path)
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC ### Cluster Policies 
+# MAGIC 
+# MAGIC A good practice would be to leverage cluster policies to force users to have specific configurations for the clusters they are using for jobs and interactive usage. Below is a sample of a cluster policy that can be used for a use case tag and access configurations.  
+# MAGIC 
+# MAGIC ```
+# MAGIC {
+# MAGIC   "custom_tags.UseCase": {
+# MAGIC     "type": "fixed",
+# MAGIC     "value": "<<USE CASE TAG>>"
+# MAGIC   },
+# MAGIC   "spark_conf.fs.azure.account.oauth2.client.id": {
+# MAGIC     "type": "fixed",
+# MAGIC     "value": "{{secrets/<<SCOPE NAME>>/<<SECRET NAME>>}}"
+# MAGIC   },
+# MAGIC   "spark_conf.fs.azure.account.oauth.provider.type": {
+# MAGIC     "type": "fixed",
+# MAGIC     "value": "org.apache.hadoop.fs.azurebfs.oauth2.ClientCredsTokenProvider"
+# MAGIC   },
+# MAGIC   "spark_conf.fs.azure.account.oauth2.client.endpoint": {
+# MAGIC     "type": "fixed",
+# MAGIC     "value": "https://login.microsoftonline.com/<<TENANT ID>>/oauth2/token"
+# MAGIC   },
+# MAGIC   "spark_conf.fs.azure.account.auth.type": {
+# MAGIC     "type": "fixed",
+# MAGIC     "value": "OAuth"
+# MAGIC   },
+# MAGIC   "spark_conf.fs.azure.account.oauth2.client.secret": {
+# MAGIC     "type": "fixed",
+# MAGIC     "value": "{{secrets/<<SCOPE NAME>>/<<SECRET NAME>>}}"
+# MAGIC   }
+# MAGIC }
+# MAGIC ```
+# MAGIC 
+# MAGIC This would allow users to create clusters with specific configurations! 
 
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Databricks SQL Access 
+# MAGIC 
+# MAGIC The recommended pattern for Databricks SQL is to use Table ACLs as we showed above. This is great to control access on a user or group level. 
+# MAGIC 
+# MAGIC In short, SQL access is configured at the workspace level with the same configurations that you would set for the clusters. It is important to note that all endpoints will have the same exact authentication against the datasets, but users access is filtered via [Table ACLs](https://docs.databricks.com/security/access-control/table-acls/index.html) and handled internally.  
+# MAGIC 
+# MAGIC To set the configuration for Databricks SQL you will need to navigate to the SQL Admin Console and input the above spark configurations.   
+# MAGIC  
+# MAGIC <img src="https://racadlsgen2.blob.core.windows.net/public/SQL Admin Console.png" />  
