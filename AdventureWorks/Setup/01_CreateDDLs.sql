@@ -228,14 +228,14 @@ CREATE OR REPLACE TABLE ${var.database_name_prefix}_Person.ContactType(
 -- CREATE TABLE [Sales].[CountryRegionCurrency](
 --     [CountryRegionCode] [nvarchar](3) NOT NULL, 
 --     [CurrencyCode] [nchar](3) NOT NULL, 
---     [ModifiedDate] [datetime] NOT NULL CONSTRAINT [DF_CountryRegionCurrency_ModifiedDate] DEFAULT (GETDATE()) 
+--     [ModifiedDate] [datetime] 
 -- ) ON [PRIMARY];
 -- GO
 
 CREATE OR REPLACE TABLE ${var.database_name_prefix}_Sales.CountryRegionCurrency(
     CountryRegionCode string NOT NULL, 
     CurrencyCode string NOT NULL, 
-    ModifiedDate timestamp NOT NULL 
+    ModifiedDate timestamp
 );
 
 -- COMMAND ----------
@@ -306,7 +306,7 @@ CREATE OR REPLACE TABLE ${var.database_name_prefix}_HumanResources.Employee(
     MaritalStatus string not null, 
     Gender string not null, 
     HireDate date NOT NULL,
-    SalariedFlag boolean NOT NULL,
+    SalariedFlag boolean,
     VacationHours short NOT NULL,
     SickLeaveHours short NOT NULL,
     CurrentFlag boolean NOT NULL,
@@ -430,7 +430,7 @@ CREATE OR REPLACE TABLE ${var.database_name_prefix}_HumanResources.Department(
 
 
 CREATE OR REPLACE TABLE ${var.database_name_prefix}_Production.Document(
-    DocumentNode string not null,
+    DocumentNode string,
 	DocumentLevel string,
     Title string not null, 
 	Owner int NOT NULL,
@@ -749,12 +749,10 @@ CREATE OR REPLACE TABLE ${var.database_name_prefix}_Production.ProductReview(
     ReviewerName string not null,
     ReviewDate timestamp NOT NULL,
     EmailAddress string not null,
-    Rating int NOT NULL,
+    Rating int,
     Comments string, 
     ModifiedDate timestamp NOT NULL
---     CONSTRAINT CK_ProductReview_Rating CHECK (Rating BETWEEN 1 AND 5), 
 );
-ALTER TABLE ${var.database_name_prefix}_Production.ProductReview ADD CONSTRAINT CK_ProductReview_Rating CHECK (Rating BETWEEN 1 AND 5);
 
 
 CREATE OR REPLACE TABLE ${var.database_name_prefix}_Production.ProductSubcategory(

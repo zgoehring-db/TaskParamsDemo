@@ -15,6 +15,7 @@
 # MAGIC CREATE WIDGET TEXT DatabaseNamePrefix DEFAULT '';
 # MAGIC CREATE WIDGET TEXT UserName DEFAULT '';
 # MAGIC CREATE WIDGET TEXT TableName Default '';
+# MAGIC CREATE WIDGET TEXT RunId DEFAULT '';
 
 # COMMAND ----------
 
@@ -22,13 +23,19 @@
 # MAGIC SET var.database_name_prefix = $DatabaseNamePrefix ; 
 # MAGIC SET var.user_name = $UserName ; 
 # MAGIC SET var.table_name = $TableName ;
+# MAGIC SET var.run_id = $RunId;
 # MAGIC USE ${var.database_name_prefix}_adventureworks_metadata ;
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC INSERT INTO rac_demo_db.adventure_works_runs values (${var.run_id}, '${var.table_name}', 0)
 
 # COMMAND ----------
 
 import os 
 import datetime
-from pyspark.sql.functions import col, max, current_timestamp
+from pyspark.sql.functions import *
 
 # COMMAND ----------
 
@@ -105,6 +112,9 @@ df = (spark.read
        
        )
 
+
+df = df.withColumn("ModifiedDate", when(df.ModifiedDate.isNull(), current_timestamp()).otherwise(df.ModifiedDate))
+
 display(df)
 
 # COMMAND ----------
@@ -150,6 +160,11 @@ checkpoint_update(new_checkpoint)
 
 checkpoint_date = checkpoint_read()
 checkpoint_date
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC UPDATE rac_demo_db.adventure_works_runs SET finished = 1 WHERE runid= ${var.run_id} and tablename = '${var.table_name}'
 
 # COMMAND ----------
 

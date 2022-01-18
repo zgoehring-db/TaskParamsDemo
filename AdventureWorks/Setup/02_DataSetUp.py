@@ -19,8 +19,8 @@
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC SET var.user_name = $UserName ; 
-# MAGIC SET var.database_prefix = $DatabasePrefix ; 
+# MAGIC SET var.user_name = getArgument("UserName") ; 
+# MAGIC SET var.database_prefix = getArgument("DatabasePrefix") ; 
 
 # COMMAND ----------
 
@@ -59,73 +59,74 @@ table_list = [i.n for i in spark.sql("SELECT concat(database_name, '.', table_na
 
 data_files = [
  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/Address.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/AddressType.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/BillOfMaterials.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/BusinessEntity.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/BusinessEntityAddress.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/BusinessEntityContact.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ContactType.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/CountryRegion.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/CountryRegionCurrency.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/CreditCard.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/Culture.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/Currency.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/CurrencyRate.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/Customer.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/Department.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/AddressType.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/BillOfMaterials.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/BusinessEntity.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/BusinessEntityAddress.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/BusinessEntityContact.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ContactType.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/CountryRegion.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/CountryRegionCurrency.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/CreditCard.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/Culture.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/Currency.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/CurrencyRate.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/Customer.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/Department.csv',
  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/Document.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/EmailAddress.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/Employee.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/EmployeeDepartmentHistory.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/EmployeePayHistory.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/Illustration.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/JobCandidate.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/Location.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/Password.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/Person.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/PersonCreditCard.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/PersonPhone.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/PhoneNumberType.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/Product.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ProductCategory.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ProductCostHistory.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ProductDescription.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ProductDocument.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ProductInventory.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ProductListPriceHistory.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/EmailAddress.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/Employee.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/EmployeeDepartmentHistory.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/EmployeePayHistory.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/Illustration.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/JobCandidate.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/Location.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/Password.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/Person.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/PersonCreditCard.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/PersonPhone.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/PhoneNumberType.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/Product.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ProductCategory.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ProductCostHistory.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ProductDescription.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ProductDocument.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ProductInventory.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ProductListPriceHistory.csv',
  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ProductModel.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ProductModelIllustration.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ProductModelProductDescriptionCulture.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ProductPhoto.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ProductProductPhoto.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ProductReview.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ProductSubcategory.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ProductVendor.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/PurchaseOrderDetail.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/PurchaseOrderHeader.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/SalesOrderDetail.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/SalesOrderHeader.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/SalesOrderHeaderSalesReason.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/SalesPerson.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/SalesPersonQuotaHistory.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/SalesReason.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/SalesTaxRate.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/SalesTerritory.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/SalesTerritoryHistory.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ScrapReason.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/Shift.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ShipMethod.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ShoppingCartItem.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/SpecialOffer.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/SpecialOfferProduct.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/StateProvince.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/Store.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/TransactionHistory.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/TransactionHistoryArchive.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/UnitMeasure.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/Vendor.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/WorkOrder.csv',
- 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/WorkOrderRouting.csv'
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ProductModelIllustration.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ProductModelProductDescriptionCulture.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ProductPhoto.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ProductProductPhoto.csv',
+ 'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ProductReview.csv'
+#   ,
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ProductSubcategory.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ProductVendor.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/PurchaseOrderDetail.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/PurchaseOrderHeader.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/SalesOrderDetail.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/SalesOrderHeader.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/SalesOrderHeaderSalesReason.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/SalesPerson.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/SalesPersonQuotaHistory.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/SalesReason.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/SalesTaxRate.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/SalesTerritory.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/SalesTerritoryHistory.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ScrapReason.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/Shift.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ShipMethod.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/ShoppingCartItem.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/SpecialOffer.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/SpecialOfferProduct.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/StateProvince.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/Store.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/TransactionHistory.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/TransactionHistoryArchive.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/UnitMeasure.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/Vendor.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/WorkOrder.csv',
+#  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/WorkOrderRouting.csv'
 ]
 
 # COMMAND ----------
@@ -171,6 +172,20 @@ print(f"d: {delim} | e: {encode}")
 df = spark.read.format("csv").option("delimiter", delim).schema(sc).option("header", "false").option("encoding", encode).load(local_file.replace("/dbfs", ""))
 if 'bronze_date' in df.columns:
   df = df.drop('bronze_date')
+
+# COMMAND ----------
+
+df.createOrReplaceTempView("tmp_address")
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT * FROM tmp_address 
+# MAGIC where addressid is null
+
+# COMMAND ----------
+
+display(df)
 
 # COMMAND ----------
 

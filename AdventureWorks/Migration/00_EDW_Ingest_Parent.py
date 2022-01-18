@@ -13,8 +13,28 @@ user_name = "ryan.chynoweth@databricks.com"
 
 # COMMAND ----------
 
-table_list = [r.table_name for r in spark.sql("SELECT DISTINCT table_name FROM {}_adventureworks_metadata.table_metadata WHERE table_name not in ('AWBuildVersion', 'JobCandidate')".format(database_prefix)).collect()]
-table_list
+# MAGIC %sql
+# MAGIC CREATE TABLE IF NOT EXISTS rac_demo_db.adventure_works_runs 
+# MAGIC (runid integer, 
+# MAGIC tablename string,
+# MAGIC finished integer)
+
+# COMMAND ----------
+
+run_id = spark.sql("SELECT max(runid) from rac_demo_db.adventure_works_runs").collect()[0][0]+1 if spark.sql("SELECT max(runid) from rac_demo_db.adventure_works_runs").collect()[0][0] is not None else 0
+run_id
+
+# COMMAND ----------
+
+# table_list = [r.table_name for r in spark.sql("SELECT DISTINCT table_name FROM {}_adventureworks_metadata.table_metadata WHERE table_name not in ('AWBuildVersion', 'JobCandidate')".format(database_prefix)).collect()]
+# table_list
+
+table_list = ['ProductReview',
+ 'ProductModel',
+ 'Employee',
+ 'Document',
+ 'Address',
+ 'Product']
 
 # COMMAND ----------
 
@@ -53,13 +73,22 @@ def parallelNotebooks(notebooks, numInParallel):
 
 # COMMAND ----------
 
-notebooks = [NotebookData(path=notebook_path, timeout=0, parameters={'DatabaseNamePrefix':database_prefix, 'TableName': t, 'UserName': user_name} ) for t in table_list]
+notebooks = [NotebookData(path=notebook_path, timeout=0, parameters={'DatabaseNamePrefix':database_prefix, 'TableName': t, 'UserName': user_name, 'RunId': run_id} ) for t in table_list]
 
-res = parallelNotebooks(notebooks, 5)
+res = parallelNotebooks(notebooks, 1)
 result = [i.result(timeout=3600) for i in res] # This is a blocking call.
 print(result)      
 
 
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT * FROM rac_demo_db.adventure_works_runs where finished = 0 and runid = (select max(runid) from rac_demo_db.adventure_works_runs)
+
+# COMMAND ----------
+
+[t.tablename for t in spark.sql("SELECT * FROM rac_demo_db.adventure_works_runs where finished = 0 and runid = (select max(runid) from rac_demo_db.adventure_works_runs)").collect()]
 
 # COMMAND ----------
 
