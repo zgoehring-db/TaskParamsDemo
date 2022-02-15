@@ -57,6 +57,11 @@ table_list = [i.n for i in spark.sql("SELECT concat(database_name, '.', table_na
 
 # COMMAND ----------
 
+# MAGIC %sql
+# MAGIC SELECT * FROM rac_adventureworks_metadata.table_metadata
+
+# COMMAND ----------
+
 data_files = [
  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/Address.csv',
 #  'https://racadlsgen2.blob.core.windows.net/adventureworks/oltp/AddressType.csv',
