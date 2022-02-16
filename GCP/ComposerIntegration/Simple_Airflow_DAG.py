@@ -1,4 +1,3 @@
-# Databricks notebook source
 ## 
 ## This is an extremely simple airflow DAG that excutes a single notebook
 ## Export this notebook as a .py file and import it into airflow
