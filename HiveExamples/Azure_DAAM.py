@@ -137,6 +137,13 @@ dbutils.fs.ls("abfss://{}@{}.dfs.core.windows.net/".format(container_name, stora
 
 # COMMAND ----------
 
+df = spark.read.format('delta').load("abfss://my_container@my_storage.dfs.core.windows.net/*/databases/*")
+
+# /dbfs/mnt/storage_account_name/container_name
+df = spark.read.format('delta').load("/dbfs/mnt/*/*/*/databases/*")
+
+# COMMAND ----------
+
 # DBTITLE 1,Create Directory for new Database
 data_path = "abfss://{}@{}.dfs.core.windows.net/{}/databases/{}".format(container_name, storage_account_name, directory, database_name)
 

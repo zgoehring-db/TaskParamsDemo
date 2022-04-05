@@ -26,15 +26,15 @@ run_id
 
 # COMMAND ----------
 
-# table_list = [r.table_name for r in spark.sql("SELECT DISTINCT table_name FROM {}_adventureworks_metadata.table_metadata WHERE table_name not in ('AWBuildVersion', 'JobCandidate')".format(database_prefix)).collect()]
-# table_list
+table_list = [r.table_name for r in spark.sql("SELECT DISTINCT table_name FROM {}_adventureworks_metadata.table_metadata WHERE table_name not in ('AWBuildVersion', 'JobCandidate')".format(database_prefix)).collect()]
+table_list
 
-table_list = ['ProductReview',
- 'ProductModel',
- 'Employee',
- 'Document',
- 'Address',
- 'Product']
+# table_list = ['ProductReview',
+#  'ProductModel',
+#  'Employee',
+#  'Document',
+#  'Address',
+#  'Product']
 
 # COMMAND ----------
 
