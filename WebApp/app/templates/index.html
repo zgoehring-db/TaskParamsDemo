@@ -34,10 +34,12 @@
 
     <h2> Input a SQL Query </h2>
     <form method="post">
-        <input type="text" id="query_text" name="query_text" ><br><br>
-        <input type="submit" value="Submit">
+        <textarea id="query_text" name="query_text" rows=10 cols=120 > </textarea>
+            <br><br>
+        <input type="submit" value="Execute">
 
     </form>
+    <br><br>
     <h4>Results: </h4>
     <table id="data" class="table table-striped">
         <thead> 
