@@ -8,6 +8,10 @@ This application allows users to view a list of all the databases in Databricks,
 
 Disclaimer: This is the first time I have used HTML is a long time so please forgive me for the website itself. 
 
+<br></br>
+![](./imgs/UI.png)
+<br></br>
+
 ## Setting the configuration file 
 
 To make it easier for others to run this application, I have a simple configuration file that needs to be created. I would recommend saving this to `app/app_config.conf` and it should run smoothly. 
