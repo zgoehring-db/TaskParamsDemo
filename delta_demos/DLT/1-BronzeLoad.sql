@@ -1,4 +1,9 @@
 -- Databricks notebook source
+-- MAGIC %md
+-- MAGIC Link to [DLT Pipeline](https://eastus2.azuredatabricks.net/?o=5206439413157315&owned-by-me=true&name-order=ascend#joblist/pipelines/5b71c79d-6d54-4bac-9c3c-b4f4bf1f3062)
+
+-- COMMAND ----------
+
 CREATE LIVE TABLE encounters_etl 
 AS 
 SELECT * FROM demo_omop_database.encounters

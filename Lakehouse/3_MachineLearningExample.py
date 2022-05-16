@@ -347,6 +347,11 @@ df_client.createOrReplaceTempView("vw_client")
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC ## SELECT THE MODEL THAT YOU WANT!
+
+# COMMAND ----------
+
 # Let's query the MLflow data in a way that shows us the most accurate model in the first row
 # This is possible because we logged accuracy as a metric using MLflow
 # Then we can grab the run_id to get a handle to the model itself

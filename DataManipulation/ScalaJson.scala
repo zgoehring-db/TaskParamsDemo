@@ -116,7 +116,3 @@ val df = rdd.toDF
 display(rdd.toDF)
 
 display(df.withColumn("new_value", from_json($"value", sc)))
-
-// COMMAND ----------
-
-

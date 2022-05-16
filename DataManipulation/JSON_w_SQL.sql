@@ -14,6 +14,11 @@
 
 -- COMMAND ----------
 
+-- MAGIC %python
+-- MAGIC print("Database: {}".format(dbutils.widgets.get("database_name")))
+
+-- COMMAND ----------
+
 CREATE TABLE store_data AS SELECT
 '{
    "store":{

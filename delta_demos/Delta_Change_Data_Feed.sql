@@ -120,7 +120,15 @@ UPDATE encounters_cdc_source set STOP = current_timestamp() where PATIENT = 'a45
 
 -- COMMAND ----------
 
+ALTER TABLE encounters_cdc_source ADD COLUMN (flag boolean)
+
+-- COMMAND ----------
+
 describe history encounters_cdc_source
+
+-- COMMAND ----------
+
+SELECT * FROM encounters_cdc_source version as of 1
 
 -- COMMAND ----------
 
