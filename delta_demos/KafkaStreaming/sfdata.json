@@ -1,0 +1,26 @@
+{
+    "name": "sfTestKafka",
+    "config": {
+        "connector.class": "com.snowflake.kafka.connector.SnowflakeSinkConnector",
+        "tasks.max": "1",
+        "topics": "ryan_chynoweth_kafka_test",
+        "snowflake.topic2table.map": "ryan_chynoweth_kafka_test:kafka_events_bronze",
+        "buffer.count.records": "1000",
+        "buffer.size.bytes": "1048576",
+        "snowflake.url.name": "ui14160.snowflakecomputing.com",
+        "snowflake.user.name": "demo_user",
+        "snowflake.private.key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzcCSjFhbfld6vxbQcjoz
+        uy3DAr1GgR3SmdDkWP9uj7JKDMC06uLF3eAUS9TCPAY1NI7JHooCmStWHlrHu2UM
+        E9SRo4gvSSj7HfNLD79TL/QNhHgbGNdktL4h4AZh3Ql7a0mTSe6+5xIu4YbZ2ADA
+        ha7WomWJkNSKJRGmZNHPbYyPZV0OcY74yrRzQLtrW+LpBGoo4zqKUYk+/emmEMCU
+        EVubVmlQm7lAgXWYWdPJXxCyhao4FJhcZXwE+nL3BbQAdCxLeBH8WcImxX2/64mZ
+        1/12EBcXf9//vHnap2MR6G10F8FJQGJxYOWocLzey5DegTVIwDE37N+gm6C/qG/p
+        kwIDAQAB",
+        "snowflake.private.key.passphrase": "demo",
+        "snowflake.database.name": "demo",
+        "snowflake.schema.name": "rac_schema",
+        "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+        "value.converter": "com.snowflake.kafka.connector.records.SnowflakeJsonConverter",
+        "value.converter.schema.registry.url": "PLAINTEXT://b-1.oetrta-kafka.oz8lgl.c3.kafka.us-west-2.amazonaws.com:9092,b-2.oetrta-kafka.oz8lgl.c3.kafka.us-west-2.amazonaws.com:9092"
+    }
+}
