@@ -3,9 +3,14 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+
+delta_demos/KafkaStreaming/sfdata-ryan.json
+rsa_key.p8
+rsa_key.pub
+
 *.conf 
 *.DS_Store
-
+*.jar
 # C extensions
 *.so
 
