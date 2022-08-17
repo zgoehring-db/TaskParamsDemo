@@ -49,11 +49,6 @@ print( topic )
 
 # COMMAND ----------
 
-# DBTITLE 1,Streaming dataset
-# MAGIC %fs ls /databricks-datasets/structured-streaming/events
-
-# COMMAND ----------
-
 # DBTITLE 1,Create UDF for UUID
 from datetime import datetime
 from pyspark.sql.functions import *
@@ -65,39 +60,31 @@ uuidUdf= udf(lambda : uuid.uuid4().hex,StringType())
 
 # COMMAND ----------
 
-# DBTITLE 1,Loading streaming dataset
-input_path = "/databricks-datasets/structured-streaming/events"
-input_schema = spark.read.json(input_path).schema
-
-input_stream = (spark
-  .readStream
-  .schema(input_schema)
-  .option("maxFilesPerTrigger", 1)
-  .json(input_path)
-  .withColumn("processingTime", lit(datetime.now().timestamp()).cast("timestamp"))
-  .withColumn("eventId", uuidUdf()))
-
-# display(input_stream)
+sample_data_path = "/databricks-datasets/structured-streaming/events"
+json_schema = spark.read.json(sample_data_path).schema
 
 # COMMAND ----------
 
-# DBTITLE 1,WriteStream to Kafka
-# Clear checkpoint location
-dbutils.fs.rm(checkpoint_location, True)
+# DBTITLE 1,ReadStream from Kafka
+startingOffsets = "earliest"
 
-# For the sake of an example, we will write to the Kafka servers using SSL/TLS encryption
-# Hence, we have to set the kafka.security.protocol property to "SSL"
-(input_stream
-   .select(col("eventId").alias("key"), to_json(struct(col('action'), col('time'), col('processingTime'))).alias("value"))
-   .writeStream
-   .trigger(processingTime='10 seconds') ## slows the streaming for demo purposes 
-   .format("kafka")
-   .option("kafka.bootstrap.servers", kafka_bootstrap_servers_plaintext )
-   .option("kafka.security.protocol", "PLAINTEXT")
-   .option("checkpointLocation", checkpoint_location )
-   .option("topic", topic)
-   .start()
-)
+# In contrast to the Kafka write in the previous cell, when we read from Kafka we use the unencrypted endpoints.
+# Thus, we omit the kafka.security.protocol property
+kafka = (spark.readStream
+  .format("kafka")
+  .option("maxBytesPerTrigger", 200000)
+  .option("kafka.bootstrap.servers", kafka_bootstrap_servers_plaintext ) 
+  .option("subscribe", topic )
+  .option("startingOffsets", startingOffsets )
+  .load())
+
+read_stream = kafka.select(col("key").cast("string").alias("eventId"), from_json(col("value").cast("string"), json_schema).alias("json"))
+
+display(read_stream)
+
+# COMMAND ----------
+
+display(read_stream.select("eventId", "json.action", "json.time"))
 
 # COMMAND ----------
 
