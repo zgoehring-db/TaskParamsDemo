@@ -69,10 +69,15 @@ CREATE TABLE store_data AS SELECT
 
 -- COMMAND ----------
 
+select * from store_data
+
+-- COMMAND ----------
+
 -- MAGIC %md
 -- MAGIC ### Top level column
 
 -- COMMAND ----------
+
 
 SELECT raw:owner, RAW:owner FROM store_data
 

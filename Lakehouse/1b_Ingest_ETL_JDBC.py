@@ -28,7 +28,7 @@ jdbcPassword = dbutils.secrets.get(scope = "rac_scope", key = "azuresqlpassword"
 jdbcHostname = dbutils.secrets.get(scope = "rac_scope", key = "azuresqlserver")
 jdbcPort = dbutils.secrets.get(scope = "rac_scope", key = "azuresqlport")
 jdbcDatabase = dbutils.secrets.get(scope = "rac_scope", key = "azuresqldatabase")
-
+jdbcUrl = "jdbc:sqlserver://{}:1433;database={};user={}@{};password={};".format(jdbcHostname, jdbcDatabase, jdbcUsername, jdbcDatabase, jdbcPassword)
 
 # COMMAND ----------
 
@@ -76,7 +76,6 @@ display(df_backfill)
 # COMMAND ----------
 
 # Create a temporary view on the dataframes to enable SQL
-
 df.createOrReplaceTempView("historical_bronze_vw")
 df_backfill.createOrReplaceTempView("historical_bronze_backfill_vw")
 

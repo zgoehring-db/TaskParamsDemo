@@ -253,4 +253,13 @@ display(spark.read.format('json').schema(sc).load('/tmp/ryan.chynoweth@databrick
 
 # COMMAND ----------
 
+(spark.read.format('json').schema(sc).load('/tmp/ryan.chynoweth@databricks.com/sample_json.json')).createOrReplaceTempView("json_vw")
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT explode(body:`values`) from json_vw
+
+# COMMAND ----------
+
 dbutils.fs.rm('/tmp/ryan.chynoweth@databricks.com/', True)
