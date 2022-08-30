@@ -4,7 +4,7 @@
 # MAGIC 
 # MAGIC In this demo we are calling an API to ingest JSON data and bring it into Databricks Delta. 
 # MAGIC 
-# MAGIC There are many ways that one can deploy this ingestion process, however, in this example I will be using a Databricks notebook and relying mostly on the [Python requests package](https://pypi.org/project/requests/). Since this process really does not require distributing my data I will be using a single node Databricks cluster to reduce costs. One benefit of writing this ingestion process in Databricks is that [Unity Catalog offers Data Lineage](https://www.databricks.com/blog/2022/06/08/announcing-the-availability-of-data-lineage-with-unity-catalog.html.     
+# MAGIC There are many ways that one can deploy this ingestion process, however, in this example I will be using a Databricks notebook and relying mostly on the [Python requests package](https://pypi.org/project/requests/). Since this process really does not require distributing my data I will be using a single node Databricks cluster to reduce costs. One benefit of writing this ingestion process in Databricks is that [Unity Catalog offers Data Lineage](https://www.databricks.com/blog/2022/06/08/announcing-the-availability-of-data-lineage-with-unity-catalog.html).     
 # MAGIC 
 # MAGIC <img src="https://racadlsgen2.blob.core.windows.net/public/SingleNodeCluster.png" />
 # MAGIC 
@@ -27,15 +27,16 @@
 
 # COMMAND ----------
 
-import requests
 import os
 import datetime 
 import time
 import pandas as pd 
 import json
-
 from pyspark.sql.types import *
 from pyspark.sql.functions import *
+
+### PYTHON IMPORTS ### 
+from common.api_client import WeatherAiClient 
 
 # COMMAND ----------
 
@@ -45,23 +46,26 @@ print(user_name)
 # COMMAND ----------
 
 dbutils.widgets.text("api_key", "") ### NOTE - this should be stored as a secret. But for demo purposes it is a widget
-dbutils.widgets.text("database_name", "") ### Note - this can be a widget or an environment variable  
-dbutils.widgets.text
+dbutils.widgets.text("schema_name", "") ### Note - this can be a widget or an environment variable  
+
 
 api_key = dbutils.widgets.get("api_key")
-database_name = dbutils.widgets.get("database_name")
+schema_name = dbutils.widgets.get("schema_name")
 
 # COMMAND ----------
 
-spark.sql("CREATE DATABASE IF NOT EXISTS {}".format(database_name))
+weather_api_client = WeatherAiClient(api_key)
 
 # COMMAND ----------
 
-spark.sql("USE {}".format(database_name))
+spark.sql("CREATE SCHEMA IF NOT EXISTS {}".format(schema_name))
 
 # COMMAND ----------
 
-# seattle, Texarkana, AR   , Pleasanton, Boise
+spark.sql("USE {}".format(schema_name))
+
+# COMMAND ----------
+
 city_list = [(47.6, -122.3, 'Seattle'), (33.44, -94.04, 'Texarkana'), (37.6, -121.8, 'Pleasanton'), (43.6, -116.2, 'Boise')]
 
 # COMMAND ----------
@@ -76,28 +80,20 @@ city_list = [(47.6, -122.3, 'Seattle'), (33.44, -94.04, 'Texarkana'), (37.6, -12
 
 # COMMAND ----------
 
-def request_data(lat, long, key):
-  api_url = "https://api.openweathermap.org/data/2.5/weather?lat={}&lon={}&exclude=hourly,daily&appid={}".format(lat, long, key)
-  data = requests.get(api_url)
-
-  return json.loads(data.content.decode("utf-8"))
-
-
-# COMMAND ----------
-
 stop_time = datetime.datetime.utcnow() + datetime.timedelta(minutes = 1)
 while datetime.datetime.utcnow() < stop_time: 
   for c in city_list:
-    pdf = pd.DataFrame([request_data(c[0], c[1], api_key)])
-
-    (spark
-     .createDataFrame(pdf)
-     .write
-     .option("overwriteSchema", "true")
-     .mode("append")
-     .saveAsTable("bronze_weather_api")
-    )
-  time.sleep(10)
+    pdf = pd.DataFrame([weather_api_client.request_data(c[0], c[1])])
+    try:
+      (spark
+       .createDataFrame(pdf)
+       .write
+       .mode("append")
+       .saveAsTable("bronze_weather_api")
+      )
+    except:
+      continue 
+    time.sleep(10)
 
 # COMMAND ----------
 
@@ -112,9 +108,6 @@ while datetime.datetime.utcnow() < stop_time:
 # COMMAND ----------
 
 raw_data_directory = "/dbfs/Users/{}/api_weather_demo/raw".format(user_name)
-raw_schema = "/Users/{}/api_weather_demo/raw/_schema".format(user_name)
-raw_checkpoint = "/Users/{}/api_weather_demo/_checkpoint".format(user_name)
-bronze_location = "/Users/{}/api_weather_demo/bronze/weather_data".format(user_name)
 
 dbutils.fs.mkdirs(raw_data_directory.replace("/dbfs", ""))
 
@@ -127,11 +120,11 @@ dbutils.fs.mkdirs(raw_data_directory.replace("/dbfs", ""))
 stop_time = datetime.datetime.utcnow() + datetime.timedelta(minutes = 1)
 while datetime.datetime.utcnow() < stop_time: 
   for c in city_list:
-    data = request_data(c[0], c[1], api_key) 
+    data = weather_api_client.request_data(c[0], c[1])
     
     data_path = "{}/{}_{}.json".format(raw_data_directory, c[2], datetime.datetime.utcnow().strftime("%d%m%Y%H%M%S"))
     with open(data_path, 'w') as f:
-      json.dump(test_d, f)
+      json.dump(data, f)
     
     
   time.sleep(10)
@@ -143,29 +136,3 @@ dbutils.fs.ls(raw_data_directory.replace("/dbfs", ""))
 # COMMAND ----------
 
 
-
-# COMMAND ----------
-
-#####  
-##  Load data with Auto Loader and Trigger Once into Delta
-##      - 
-#####  
-
-
-display(spark.readStream.format("cloudFiles") 
-  .option("cloudFiles.format", "json") 
-  .option("cloudFiles.schemaLocation", raw_schema) 
-  .load(raw_data_directory.replace("/dbfs", "")) + "/*.json")
-#   .writeStream \
-#   .option("mergeSchema", "true") \
-#   .option("checkpointLocation", raw_checkpoint) \
-#   .trigger(once=True)
-#   .start(bronze_location)
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC CREATE TABLE IF NOT EXISTS bronze_weather_delta
-# MAGIC AS 
-# MAGIC SELECT * 
-# MAGIC FROM delta.``""
