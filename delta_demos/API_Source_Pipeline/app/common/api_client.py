@@ -15,4 +15,3 @@ class WeatherAiClient():
     return json.loads(data.content.decode("utf-8"))
   
 
-  

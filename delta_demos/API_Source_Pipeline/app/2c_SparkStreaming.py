@@ -28,7 +28,7 @@ spark.sql("USE {}".format(schema_name))
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Read Delta Table as a Stream Using AutoLoader
+# MAGIC ## Read Delta Table as a Stream 
 
 # COMMAND ----------
 
