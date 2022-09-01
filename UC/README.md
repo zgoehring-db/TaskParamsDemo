@@ -4,7 +4,7 @@
 
 ## Information Schema 
 
-Associated [notebook](uc_information_schema.py). 
+Associated [notebook](./uc_information_schema.py). 
 
 The INFORMATION_SCHEMA is a SQL Standard based, system provided schema present in every catalog other than the HIVE_METASTORE catalog.
 
