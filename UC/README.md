@@ -4,7 +4,7 @@
 
 ## Information Schema 
 
-Associated [notebook](./uc_information_schema). 
+Associated [notebook](uc_information_schema). 
 
 The INFORMATION_SCHEMA is a SQL Standard based, system provided schema present in every catalog other than the HIVE_METASTORE catalog.
 
