@@ -411,8 +411,6 @@ spark.sql("USE SCHEMA {}".format(schema_name))
 # MAGIC INNER JOIN table_constraints stc on stc.constraint_name =  rc.unique_constraint_name 
 # MAGIC INNER JOIN constraint_column_usage pccu on pccu.constraint_name = rc.constraint_name 
 # MAGIC INNER JOIN constraint_column_usage sccu on sccu.constraint_name = rc.unique_constraint_name 
-# MAGIC 
-# MAGIC -- WHERE rc.constraint_catalog = 'rac_demo_catalog'
 # MAGIC ;
 # MAGIC 
 # MAGIC SELECT * FROM rac_demo_catalog.rac_demo_db.table_relationships_view;

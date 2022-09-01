@@ -15,7 +15,30 @@ The purpose of the information schema is to provide a SQL based, self describing
 
 Below is a sample query than can be used to generate a network graph of the table relationships: 
 ```sql
+%sql
+CREATE OR REPLACE VIEW rac_demo_catalog.rac_demo_db.table_relationships_view
+AS 
+SELECT DISTINCT ptc.table_catalog as p_table_catalog -- table 1
+  , ptc.table_schema as p_table_schema
+  , ptc.table_name as p_table_name
+  , stc.table_catalog as s_table_catalog -- table 2
+  , stc.table_schema as s_table_schema
+  , stc.table_name as s_table_name
+  , rc.constraint_name -- foreign key
+  , pccu.column_name as constraint_column_name
+  , rc.unique_constraint_name -- primary key
+  , sccu.column_name as unique_constraint_column_name
 
+FROM referential_constraints rc 
+INNER JOIN table_constraints ptc on ptc.constraint_name =  rc.constraint_name 
+INNER JOIN table_constraints stc on stc.constraint_name =  rc.unique_constraint_name 
+INNER JOIN constraint_column_usage pccu on pccu.constraint_name = rc.constraint_name 
+INNER JOIN constraint_column_usage sccu on sccu.constraint_name = rc.unique_constraint_name 
+
+-- WHERE rc.constraint_catalog = 'rac_demo_catalog'
+;
+
+SELECT * FROM rac_demo_catalog.rac_demo_db.table_relationships_view;
 ```
 <br></br>
 Visual:
