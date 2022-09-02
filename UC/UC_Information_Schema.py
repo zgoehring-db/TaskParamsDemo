@@ -2,7 +2,9 @@
 # MAGIC %md
 # MAGIC # Unity Catalog - Exploring the Information Schema
 # MAGIC 
-# MAGIC The information schema is provided in each catalog other than the `hive_metastore` catalog. Each information schema will reference only the catalog that it belongs to. There is one exception for the `system` catalog that returns information about objects across all catalogs within the metastore. Metastore is the top level object in Unity Catalog, not to be confused with the Hive Metastore. Note that by default the user will only be able to view data on tables that the user is privileged to interact with.   
+# MAGIC The information schema is provided in each catalog other than the `hive_metastore` catalog. Each information schema will reference only the catalog that it belongs to. 
+# MAGIC 
+# MAGIC There is one exception for the `system` catalog that returns information about objects across all catalogs within the metastore. Metastore is the top level object in Unity Catalog, not to be confused with the Hive Metastore. Note that by default the user will only be able to view data on tables that the user is privileged to interact with.   
 # MAGIC 
 # MAGIC 
 # MAGIC <br></br>
@@ -513,6 +515,49 @@ nx.draw_networkx(G,pos)
 # MAGIC , tc.table_name
 # MAGIC 
 # MAGIC ORDER BY 8 desc
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Catalog Objects Created by Date
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT table_catalog, table_schema, table_name, table_type, 1 as cnt
+# MAGIC FROM tables
+# MAGIC WHERE table_schema != 'information_schema' 
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT * FROM tables 
+# MAGIC where table_catalog='sumit_uc_demo' and table_schema = 'retail'
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Types of Tables
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT table_catalog, table_schema, table_name, table_type, 1 as cnt
+# MAGIC FROM tables
+# MAGIC WHERE table_schema != 'information_schema' 
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Who is Creating Tables
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC 
+# MAGIC SELECT table_catalog, table_schema, table_name, created_by, 1 as cnt
+# MAGIC FROM tables
+# MAGIC WHERE table_schema != 'information_schema' 
 
 # COMMAND ----------
 
