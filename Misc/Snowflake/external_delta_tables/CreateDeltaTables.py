@@ -6,8 +6,9 @@
 
 # COMMAND ----------
 
-dbutils.widgets.text("delta_path","") # ex. abfss://snowflakedemo@racadlsgen2.dfs.core.windows.net/delta_table
-dbutils.widgets.text("delta_path_manifest","") # ex. abfss://snowflakedemo@racadlsgen2.dfs.core.windows.net/delta_table_manifest
+dbutils.widgets.text("delta_path","") # ex. abfss://<container>@<account>.dfs.core.windows.net/delta_table_manifest
+dbutils.widgets.text("delta_path_manifest","") # ex. abfss://<container>@<account>.dfs.core.windows.net/delta_table_manifest
+dbutils.widgets.text("parquet_path","") # ex. abfss://<container>@<account>.dfs.core.windows.net/snowflake_parquet
 dbutils.widgets.text("schema_name", "")
 
 # COMMAND ----------
@@ -27,6 +28,8 @@ dbutils.fs.ls("abfss://snowflakedemo@racadlsgen2.dfs.core.windows.net/")
 source_json = "/databricks-datasets/structured-streaming/events"
 delta_path = dbutils.widgets.get("delta_path")
 delta_path_manifest = dbutils.widgets.get("delta_path_manifest")
+parquet_path = dbutils.widgets.get("parquet_path")
+
 
 # COMMAND ----------
 
@@ -114,4 +117,24 @@ dbutils.fs.ls(delta_path_manifest)
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC ## Create Delta Table from Parquet
 
+# COMMAND ----------
+
+spark.sql(
+"""
+CONVERT TO DELTA parquet.`{}`
+""".format(parquet_path)
+)
+
+# COMMAND ----------
+
+spark.sql(
+"""
+CREATE OR REPLACE TABLE snowflake_parquet_delta
+AS 
+SELECT * 
+FROM delta.`{}`
+""".format(parquet_path)
+)
