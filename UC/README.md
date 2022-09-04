@@ -4,7 +4,7 @@
 
 ## Information Schema 
 
-Please reference `uc_information_schema.py`
+Please reference `uc_information_schema.py` for code examples and the [associated medium blog](https://medium.com/@24chynoweth/unity-catalog-the-information-schema-1d162ede3737). 
 
 The INFORMATION_SCHEMA is a SQL Standard based, system provided schema present in every catalog other than the HIVE_METASTORE catalog.
 
