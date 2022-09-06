@@ -107,7 +107,7 @@ spark.sql("""
 # COMMAND ----------
 
 # Generate manifests of a Delta table using Databricks Runtime
-from delta import *
+from delta import * 
 deltaTable = DeltaTable.forPath(spark, delta_path_manifest)
 deltaTable.generate("symlink_format_manifest")
 
