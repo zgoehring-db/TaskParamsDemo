@@ -2,7 +2,9 @@
 # MAGIC %md
 # MAGIC # Create Delta Tables
 # MAGIC 
-# MAGIC This notebook creates two separate Delta tables to test the integration between Delta Lake and Snowflake.  
+# MAGIC This notebook creates two separate Delta tables to test the integration between Delta Lake and Snowflake. 
+# MAGIC 
+# MAGIC [Manifest](https://docs.delta.io/latest/snowflake-integration.html)
 
 # COMMAND ----------
 
