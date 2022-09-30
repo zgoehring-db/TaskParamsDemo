@@ -274,7 +274,7 @@ with mlflow.start_run() as run:
   mlflow.log_metric("Overall Elapsed Time", overall_elapsed_time)
 
   # Log the model itself
-  mlflow_spark.log_model(bestModel, "spark-model")
+  mlflow.spark.log_model(bestModel, "spark-model")
 
 # COMMAND ----------
 
@@ -327,11 +327,8 @@ with mlflow.start_run() as run:
 
 # COMMAND ----------
 
-# Let's load the experiment... 
-# If this were *really* another notebook, I'd have to obtain the Experiment ID from the MLflow page.  
-# But since we are in the original notebook, I can get it as a default value
-
-df_client = spark.read.format("mlflow-experiment").load()
+# Let's load the experiment
+df_client = spark.read.format("mlflow-experiment").load('9c301013f57e47b3b582e688f203d45c')
 df_client.createOrReplaceTempView("vw_client")
 
 # COMMAND ----------
@@ -532,3 +529,7 @@ display(spark.sql("""
 # MAGIC  __*But we've just scratched the surface of what MLflow can do...*__
 # MAGIC  
 # MAGIC  To learn more, check out documentation and notebook examples for MLflow Models and MLflow Registry.
+
+# COMMAND ----------
+
+

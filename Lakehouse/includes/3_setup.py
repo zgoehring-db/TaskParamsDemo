@@ -81,11 +81,10 @@ stdout.decode('utf-8'), stderr.decode('utf-8')
 
 # Copy the downloaded data to DBFS
 
-dbutils.fs.rm(f"dbfs:/FileStore/flight/{dbfs_data_path}/sensor_readings_current_labeled.csv")
 
-dbutils.fs.mkdirs(f"/dbfs/{dbfs_data_path}bronze")
+dbutils.fs.mkdirs(f"{dbfs_data_path}bronze")
 
-copyfile(f"{local_data_path}/sensor_readings_current_labeled_v4.csv", f"/dbfs/{dbfs_data_path}bronze/sensor_readings_current_labeled.csv")
+copyfile(f"{local_data_path}/sensor_readings_current_labeled_v4.csv", f"/dbfs{dbfs_data_path}bronze/sensor_readings_current_labeled.csv")
 
 
 # COMMAND ----------
@@ -141,3 +140,7 @@ df.createOrReplaceTempView("input_vw")
 response = local_data_path + " " + dbfs_data_path + " " + database_name
 
 dbutils.notebook.exit(response)
+
+# COMMAND ----------
+
+

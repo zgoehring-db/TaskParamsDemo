@@ -9,24 +9,22 @@
 # MAGIC <img src="https://racadlsgen2.blob.core.windows.net/public/PerfClusterConfig.png" />
 # MAGIC 
 # MAGIC 
-# MAGIC ## General Information
+# MAGIC ## General Tips
 # MAGIC - Most of the time fewer larger instances are better than many smaller ones as it decreases shuffling across workers i.e. more partitions available per machine. 
 # MAGIC - Use IO-optimized instances for faster spill storage  
-# MAGIC - About 128mb per partition 
-# MAGIC - Spark.sql.shuffle.partitions should be a factor of the cores
-# MAGIC - On azure use the Ls_v2 and Fs instance types to enable delta cache   
-# MAGIC - Use Databricks pools whenever possible/economical:
+# MAGIC - About 128mb max per partition 
+# MAGIC - `spark.sql.shuffle.partitions` should be a factor of the cores
+# MAGIC - Use instance types to enable delta cache when working with data from delta   
+# MAGIC - Use Databricks pools whenever possible/economical for faster autoscaling:
 # MAGIC   - Databricks does not charge for idle instances (~50% cost savings)
 # MAGIC   - Faster scaling of auto-scaling clusters (both job and interactive clusters)
 # MAGIC   - The pools will essentially allow users to have their own driver but then share a pool of warm machines. 
 # MAGIC - Use auto-scaling and auto terminate for development 
-# MAGIC   - You can use on jobs but it is usually better to have a fixed number of workers to avoid time wasted on scaling 
+# MAGIC   - You can use autoscaling on jobs but it is usually better to have a fixed number of workers to avoid time wasted on scaling unless it is a very long running job then the economics tend to work out. 
 # MAGIC - Use case tagging on clusters
 # MAGIC 
 # MAGIC 
-# MAGIC Cluster sizing is entirely job based. Start your cluster size by calculating the input data size to compute number of cores. Analyzing the query plan during development will give a better idea of further cluster requirements for the job. 
-# MAGIC 
-# MAGIC Most tuning is done by optimizing partitioning and cache which Databricks handles caching pretty well, especially with Delta. 
+# MAGIC Cluster sizing is entirely job based. Start your cluster size by calculating the input data size to compute number of cores. Analyzing the query plan during development will give a better idea of further cluster requirements for the job. Most tuning is done by optimizing partitioning and cache which Databricks handles caching pretty well, especially with Delta. 
 # MAGIC 
 # MAGIC ## Helpful Resources:
 # MAGIC - [Spark Summit 2019 Talk on Optimization](https://www.youtube.com/watch?v=daXEp4HmS-E)  
@@ -39,8 +37,8 @@
 # MAGIC Please keep in mind the following:
 # MAGIC 1. Application: all operations in a Spark session. Spark clusters can have many applications  
 # MAGIC 1. Jobs: applications have spark jobs  
-# MAGIC 1. Stages: spark jobs can have many stages  
-# MAGIC 1. Tasks: stages can have many tasks and tasks typically map to the number of partitions  
+# MAGIC 1. Stages: spark jobs have many stages  
+# MAGIC 1. Tasks: stages can many tasks and tasks typically map to the number of partitions in the dataframe  
 # MAGIC 
 # MAGIC There are multiple tabs available for various aspects of monitoring jobs in Spark:
 # MAGIC - Jobs: refers to Spark Jobs   
@@ -240,7 +238,15 @@ display(delta_df)
 
 # COMMAND ----------
 
-delta_df2 = spark.sql("SELECT * FROM json_delta_table LIMIT 10000")
+spark.sql("""
+CREATE OR REPLACE TABLE json_delta_table2
+AS 
+SELECT * FROM json_delta_table LIMIT 10000
+""")
+
+# COMMAND ----------
+
+delta_df2 = spark.sql("SELECT * FROM json_delta_table2")
 display(delta_df2)
 
 # COMMAND ----------
@@ -355,6 +361,10 @@ snowflake_df.rdd.getNumPartitions()
 
 # COMMAND ----------
 
+snowflake_df.repartition(100)
+
+# COMMAND ----------
+
 for i in range(0,20):
   (
   snowflake_df.write
@@ -432,12 +442,6 @@ print(f"----> Number of partitions {sdf.rdd.getNumPartitions()}")
 # MAGIC 
 # MAGIC <br></br>
 # MAGIC <img src="https://racadlsgen2.blob.core.windows.net/public/PerSQLTab-Join.png" width=400/>
-# MAGIC 
-# MAGIC 
-# MAGIC General things to keep an eye out for in the query plan:  
-# MAGIC - Exchanges 
-# MAGIC - asdfs
-# MAGIC - asdfs
 
 # COMMAND ----------
 
