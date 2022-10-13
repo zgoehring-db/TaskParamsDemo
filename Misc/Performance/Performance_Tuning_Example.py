@@ -21,7 +21,7 @@
 # MAGIC   - The pools will essentially allow users to have their own driver but then share a pool of warm machines. 
 # MAGIC - Use auto-scaling and auto terminate for development 
 # MAGIC   - You can use autoscaling on jobs but it is usually better to have a fixed number of workers to avoid time wasted on scaling unless it is a very long running job then the economics tend to work out. 
-# MAGIC - Use case tagging on clusters
+# MAGIC - Tagging on clusters is crucial to proving the cost-value of the solution 
 # MAGIC 
 # MAGIC 
 # MAGIC Cluster sizing is entirely job based. Start your cluster size by calculating the input data size to compute number of cores. Analyzing the query plan during development will give a better idea of further cluster requirements for the job. Most tuning is done by optimizing partitioning and cache which Databricks handles caching pretty well, especially with Delta. 
@@ -31,6 +31,8 @@
 # MAGIC - [Azure Databricks Pools Best Practices](https://docs.microsoft.com/en-us/azure/databricks/clusters/instance-pools/pool-best-practices)  
 # MAGIC - [Spark: The Definitive Guide](https://www.amazon.com/Spark-Definitive-Guide-Processing-Simple/dp/1491912219)  
 # MAGIC   - Written by the original creator of Apache Spark and provides a ton of information on how Spark works and best development practices  
+# MAGIC - [RDD Whitepaper](https://people.csail.mit.edu/matei/papers/2012/nsdi_spark.pdf)  
+# MAGIC   - Chapter 5 talks about how Spark was implemented and the process it takes to execute transformations.  
 # MAGIC 
 # MAGIC ## Spark UI
 # MAGIC 
@@ -79,7 +81,7 @@ spark.sql(f"USE {schema_name}")
 # MAGIC 
 # MAGIC A [dataframe](https://www.databricks.com/glossary/what-are-dataframes) is a higher level object that sits on top of RDDs. Dataframes allow users to operate on data in similar ways as one would with other dataframe libraries (i.e. pandas) but in a distributed fashion. Dataframes allow users to operate on sets of columns and rows and enforce data types on the data. 
 # MAGIC 
-# MAGIC Both RDDs and Dataframes are stored in-memory on the worker nodes of the cluster. If all the data cannot fit in-memory then it will spill to disk, but data spill should be avoided as much as possible for performance related issues.  
+# MAGIC Both RDDs and Dataframes are stored in-memory on the worker nodes of the cluster. If all the data cannot fit in-memory then it will spill to disk, but data spill should be avoided to optimize performance.  
 # MAGIC 
 # MAGIC In the below image, the left side is represents a non-distributed dataset which are things like a pandas dataframe or excel spreadsheet. The right side of the image represents data distributed across machines in a data center which represents a spark dataframe:
 # MAGIC <br></br>
@@ -108,6 +110,11 @@ spark.sql(f"USE {schema_name}")
 # MAGIC 
 # MAGIC 
 # MAGIC For more information on transformations check out this [documentation](https://www.databricks.com/glossary/what-are-transformations). 
+# MAGIC 
+# MAGIC 
+# MAGIC #### Shuffle Read and Write 
+# MAGIC 
+# MAGIC Shuffling data on a cluster is the process of moving data from one CPU to another. This requires the machines to write the data to disk (shuffle write) so that it can then be read (shuffle read) onto another machine and placed on another CPU. This occurs between stages in a job and is often represented in a data "exchange" in the query plan. The more data shuffled results in slower performance. Understanding how much data you are processing is important to understand if there is too much shuffle read/write. For example, if I am working with 1GB of data but shuffling writing 10GB then there is an issue. Where as if I am working with 1TB and shuffling 10GB then that should be seen as a smaller amount. 
 
 # COMMAND ----------
 
@@ -353,15 +360,7 @@ snowflake_df.count()
 
 # COMMAND ----------
 
-snowflake_df.count()
-
-# COMMAND ----------
-
 snowflake_df.rdd.getNumPartitions()
-
-# COMMAND ----------
-
-snowflake_df.repartition(100)
 
 # COMMAND ----------
 
