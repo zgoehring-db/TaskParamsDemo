@@ -4,6 +4,10 @@ from delta.tables import *
 
 # COMMAND ----------
 
+dbutils.jobs.taskValues.get(taskKey='bronze', key = "bronze_max_datetime", debugValue='2022-01-01')
+
+# COMMAND ----------
+
 dbutils.widgets.text('schema', '')
 dbutils.widgets.text('table', '')
 dbutils.widgets.text('target_table_name', '')

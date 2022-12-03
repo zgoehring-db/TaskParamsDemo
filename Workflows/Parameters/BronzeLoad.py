@@ -18,11 +18,20 @@ display(df)
 
 # COMMAND ----------
 
- df.write.saveAsTable(table_name)
+ df.write.mode('overwrite').saveAsTable(table_name)
 
 # COMMAND ----------
 
 display(spark.sql(f'select * from {table_name} limit 10'))
+
+# COMMAND ----------
+
+max_datetime = spark.sql(f'select max(timestamp) from {table_name}').collect()[0][0]
+print(max_datetime)
+
+# COMMAND ----------
+
+dbutils.jobs.taskValues.set(key = "bronze_max_datetime", value = max_datetime)
 
 # COMMAND ----------
 
