@@ -4,7 +4,7 @@ from delta.tables import *
 
 # COMMAND ----------
 
-dbutils.jobs.taskValues.get(taskKey='bronze', key = "bronze_max_datetime", debugValue='2022-01-01')
+dbutils.jobs.taskValues.get(taskKey='Bronze', key = "bronze_max_datetime", debugValue='2022-01-01')
 
 # COMMAND ----------
 
