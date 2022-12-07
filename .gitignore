@@ -8,6 +8,7 @@ delta_demos/KafkaStreaming/sfdata-ryan.json
 rsa_key.p8
 rsa_key.pub
 
+*.vscode
 *.conf 
 *.DS_Store
 *.jar
