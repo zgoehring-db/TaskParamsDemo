@@ -9,6 +9,10 @@ table_name = dbutils.widgets.get('table')
 
 # COMMAND ----------
 
+spark.sql(f'create schema if not exists {schema_name}')
+
+# COMMAND ----------
+
 spark.sql(f'use {schema_name}')
 
 # COMMAND ----------
