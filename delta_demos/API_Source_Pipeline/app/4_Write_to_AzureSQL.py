@@ -10,9 +10,6 @@
 
 import time
 
-user_name = spark.sql("SELECT current_user()").collect()[0][0]
-print(user_name)
-
 # COMMAND ----------
 
 dbutils.widgets.text("schema_name", "") ### Note - this can be a widget or an environment variable  
@@ -28,9 +25,8 @@ spark.sql("USE {}".format(schema_name))
 jdbcUsername = dbutils.secrets.get(scope = "rac_scope", key = "azuresqluser")
 jdbcPassword = dbutils.secrets.get(scope = "rac_scope", key = "azuresqlpassword")
 jdbcHostname = dbutils.secrets.get(scope = "rac_scope", key = "azuresqlserver")
-jdbcPort = dbutils.secrets.get(scope = "rac_scope", key = "azuresqlport")
 jdbcDatabase = dbutils.secrets.get(scope = "rac_scope", key = "azuresqldatabase")
-jdbcUrl = "jdbc:sqlserver://{}:1433;database={};user={}@{};password={};".format(jdbcHostname, jdbcDatabase, jdbcUsername, jdbcDatabase, jdbcPassword)
+jdbcUrl = "jdbc:sqlserver://{}.database.windows.net:1433;database={};user={};password={};".format(jdbcHostname, jdbcDatabase, jdbcUsername, jdbcPassword)
 
 # COMMAND ----------
 
@@ -61,11 +57,46 @@ display(sql_df)
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## Create an External Table
+
+# COMMAND ----------
+
+tableName = "silver_weather_dlt_daily_recorded_data_agg"
+
+sqlQry = '''
+CREATE TABLE IF NOT EXISTS external_{1}
+USING org.apache.spark.sql.jdbc
+OPTIONS (
+  url '{0}',
+  dbtable '{1}',
+  user '{2}',
+  password '{3}')'''.format(jdbcUrl, tableName, jdbcUsername, jdbcPassword)
+
+spark.sql(sqlQry)
+
+# COMMAND ----------
+
+tbl = "external_silver_weather_dlt_daily_recorded_data_agg"
+
+display(
+  spark.sql("""
+    select * 
+    from {}
+  """.format(tbl))
+)
+
+# COMMAND ----------
+
+display(spark.sql("describe extended {}".format(tbl)))
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## Stream Data from Delta to Azure SQL
 
 # COMMAND ----------
 
-df = spark.readStream.format('delta').table("streaming_silver_weather_main")
+df = spark.readStream.format('delta').table("silver_weather_dlt_daily_recorded_data_agg")
 
 # COMMAND ----------
 
@@ -77,7 +108,7 @@ def stream_to_azsql(microBatchDF, batchId):
    .format("jdbc")
    .mode("overwrite")
    .option("url", jdbcUrl)
-   .option("dbtable", "streaming_silver_weather_main")
+   .option("dbtable", "silver_weather_dlt_daily_recorded_data_agg")
    .save()
   )
 
