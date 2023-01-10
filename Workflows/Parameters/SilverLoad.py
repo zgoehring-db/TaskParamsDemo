@@ -4,7 +4,12 @@ from delta.tables import *
 
 # COMMAND ----------
 
-dbutils.jobs.taskValues.get(taskKey='Bronze', key = "bronze_max_datetime", debugValue='2022-01-01')
+# debugValue gets used when interactively running this notebook since there is no context of the job
+bronze_max = dbutils.jobs.taskValues.get(taskKey='bronze_load', key = "bronze_max_datetime", debugValue='2022-01-01')
+
+# COMMAND ----------
+
+print(bronze_max)
 
 # COMMAND ----------
 
@@ -81,7 +86,3 @@ delta_table = DeltaTable.forName(spark, target_table_name)
 # COMMAND ----------
 
 display(spark.read.table(target_table_name).orderBy(col('windowStart').desc()))
-
-# COMMAND ----------
-
-
